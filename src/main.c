@@ -47,6 +47,28 @@ static void draw_boxed_window(WINDOW *w, const char *title, int focused) {
     wnoutrefresh(w);
 }
 
+static void draw_history_content(WINDOW *w, const AppState *state) {
+    int h, wdt;
+    getmaxyx(w, h, wdt);
+
+    int max_items = h - 2; // inside the box
+    if (max_items <= 0) return;
+
+    for (int i = 0; i < max_items; i++) {
+        int idx = i; // fake items: Item 0..N
+
+        if (idx == state->history_selected) {
+            wattron(w, A_REVERSE);
+            mvwprintw(w, 1 + i, 2, "Item %d", idx);
+            wattroff(w, A_REVERSE);
+        } else {
+            mvwprintw(w, 1 + i, 2, "Item %d", idx);
+        }
+    }
+
+    wnoutrefresh(w);
+}
+
 static void draw_ui(const AppState *state) {
     static WINDOW *w_history  = NULL;
     static WINDOW *w_editor   = NULL;
@@ -116,6 +138,7 @@ static void draw_ui(const AppState *state) {
             " History ",
             state->focused_panel == PANEL_HISTORY
         );
+        draw_history_content(w_history, state);
 
         draw_boxed_window(
             w_editor,
@@ -130,6 +153,7 @@ static void draw_ui(const AppState *state) {
         );
 
     }
+    
 
     doupdate();
 }

@@ -19,11 +19,15 @@ void dispatch_action(AppState *s, Action a) {
             break;
 
         case ACT_MOVE_DOWN:
-            if (s->focused_panel == PANEL_HISTORY) s->history_selected++;
+            if (s->focused_panel == PANEL_HISTORY) {
+                s->history_selected++;
+            }
             break;
 
         case ACT_MOVE_UP:
-            if (s->focused_panel == PANEL_HISTORY && s->history_selected > 0) s->history_selected--;
+            if (s->focused_panel == PANEL_HISTORY && s->history_selected > 0) {
+                s->history_selected--;
+            }
             break;
 
         default:
