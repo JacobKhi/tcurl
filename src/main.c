@@ -28,9 +28,67 @@ static const char *panel_label(Panel p) {
     }
 }
 
+static void draw_boxed_window(WINDOW *w, const char *title) {
+    int h, wd;
+    getmaxyx(w, h, wd);
+
+    werase(w);
+    box(w, 0, 0);
+
+    if (title && wd > 4) {
+        mvwaddnstr(w, 0, 2, title, wd - 4);
+    }
+
+    wnoutrefresh(w);
+}
+
 static void draw_ui(const AppState *state) {
+    static WINDOW *w_history  = NULL;
+    static WINDOW *w_editor   = NULL;
+    static WINDOW *w_response = NULL;
+
+    static int last_rows = -1;
+    static int last_cols = -1;
+
     int rows, cols;
     getmaxyx(stdscr, rows, cols);
+
+    if (rows != last_rows || cols != last_cols) {
+        if (w_history)  { delwin(w_history);  w_history = NULL; }
+        if (w_editor)   { delwin(w_editor);   w_editor = NULL; }
+        if (w_response) { delwin(w_response); w_response = NULL; }
+
+        last_rows = rows;
+        last_cols = cols;
+
+        int inner_y = 1;
+        int inner_h = rows - 2;
+        int inner_x = 1;
+        int inner_w = cols - 2;
+
+        if (inner_h < 3 || inner_w < 10) {
+        } else {
+            int left_w = inner_w / 3;
+            if (left_w < 20) left_w = 20;
+            if (left_w > inner_w - 20) left_w = inner_w - 20;
+
+            int right_w = inner_w - left_w;
+
+            int left_x = inner_x;
+            int right_x = inner_x + left_w;
+
+            int right_top_h = inner_h / 2;
+            int right_bottom_h = inner_h - right_top_h;
+
+            w_history  = newwin(inner_h, left_w, inner_y, left_x);
+            w_editor   = newwin(right_top_h, right_w, inner_y, right_x);
+            w_response = newwin(right_bottom_h, right_w, inner_y + right_top_h, right_x);
+
+            leaveok(w_history, TRUE);
+            leaveok(w_editor, TRUE);
+            leaveok(w_response, TRUE);
+        }
+    }
 
     erase();
     box(stdscr, 0, 0);
@@ -38,22 +96,22 @@ static void draw_ui(const AppState *state) {
     const char *top = " tcurl ";
     mvaddnstr(0, 2, top, cols - 4);
 
-    const char *center = "Keymap-driven TUI";
-    int cx = (cols - (int)strlen(center)) / 2;
-    if (cx < 1) cx = 1;
-    mvaddnstr(rows / 2, cx, center, cols - 2);
-
     char status[256];
-    snprintf(
-        status, sizeof(status),
-        " %s | focus=%s | history_selected=%d ",
-        mode_label(state->mode),
-        panel_label(state->focused_panel),
-        state->history_selected
-    );
+    snprintf(status, sizeof(status), " %s | focus=%s | history_selected=%d ",
+             mode_label(state->mode),
+             panel_label(state->focused_panel),
+             state->history_selected);
     mvaddnstr(rows - 1, 2, status, cols - 4);
 
-    refresh();
+    wnoutrefresh(stdscr);
+
+    if (w_history && w_editor && w_response) {
+        draw_boxed_window(w_history,  " History ");
+        draw_boxed_window(w_editor,   " Editor ");
+        draw_boxed_window(w_response, " Response ");
+    }
+
+    doupdate();
 }
 
 int main(void) {
@@ -66,6 +124,7 @@ int main(void) {
     (void)keymap_load_file(&keymap, "config/keymap.conf");
 
     initscr();
+    set_escdelay(25);
     cbreak();
     noecho();
     keypad(stdscr, TRUE);
