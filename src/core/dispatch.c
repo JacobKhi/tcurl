@@ -1,0 +1,32 @@
+#include "state.h"
+#include "core/actions.h"
+
+void dispatch_action(AppState *s, Action a) {
+    switch (a) {
+        case ACT_QUIT: s->running = 0; break;
+
+        case ACT_ENTER_INSERT: s->mode = MODE_INSERT; break;
+        case ACT_ENTER_NORMAL: s->mode = MODE_NORMAL; break;
+        case ACT_ENTER_COMMAND: s->mode = MODE_COMMAND; break;
+        case ACT_ENTER_SEARCH: s->mode = MODE_SEARCH; break;
+
+        case ACT_FOCUS_LEFT:
+            if (s->focused_panel > 0) s->focused_panel--;
+            break;
+
+        case ACT_FOCUS_RIGHT:
+            if (s->focused_panel < PANEL_COUNT - 1) s->focused_panel++;
+            break;
+
+        case ACT_MOVE_DOWN:
+            if (s->focused_panel == PANEL_HISTORY) s->history_selected++;
+            break;
+
+        case ACT_MOVE_UP:
+            if (s->focused_panel == PANEL_HISTORY && s->history_selected > 0) s->history_selected--;
+            break;
+
+        default:
+            break;
+    }
+}

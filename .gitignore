@@ -1,0 +1,24 @@
+# binaries
+tcurl
+*.out
+*.exe
+
+# objects
+*.o
+*.a
+*.so
+
+# build dirs
+build/
+dist/
+
+# editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# local config
+.env
+config.local.*
