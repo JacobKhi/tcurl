@@ -1,5 +1,7 @@
 #pragma once
 
+#define URL_MAX 1024
+
 typedef enum {
     MODE_NORMAL = 0,
     MODE_INSERT = 1,
@@ -22,6 +24,10 @@ typedef struct {
     Panel focused_panel;
 
     int history_selected;
+
+    char url[URL_MAX];
+    int url_len;
+    int url_cursor;
 } AppState;
 
 void app_state_init(AppState *s);

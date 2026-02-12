@@ -31,6 +31,7 @@ static const char *panel_label(Panel p) {
 static void draw_boxed_window(WINDOW *w, const char *title, int focused) {
     int h, wd;
     getmaxyx(w, h, wd);
+    (void)h;
 
     werase(w);
 
@@ -50,6 +51,7 @@ static void draw_boxed_window(WINDOW *w, const char *title, int focused) {
 static void draw_history_content(WINDOW *w, const AppState *state) {
     int h, wdt;
     getmaxyx(w, h, wdt);
+    (void)wdt;
 
     int max_items = h - 2; // inside the box
     if (max_items <= 0) return;
@@ -66,6 +68,33 @@ static void draw_history_content(WINDOW *w, const AppState *state) {
         }
     }
 
+    wnoutrefresh(w);
+}
+
+static void draw_editor_content(WINDOW *w, const AppState *state) {
+    int h, wd;
+    getmaxyx(w, h, wd);
+
+    (void)h;
+
+    mvwaddnstr(w, 1, 2, "URL:", wd - 4);
+    // draw url (clipped)
+    mvwaddnstr(w, 2, 2, state->url, wd - 4);
+
+    // show cursor only in insert mode and when editor focused
+    if (state->mode == MODE_INSERT && state->focused_panel == PANEL_EDITOR) {
+        // cursor row 2, col 2 + url_cursor
+        int cx = 2 + state->url_cursor;
+        int cy = 2;
+
+        // clamp inside window
+        if (cx < wd - 1) {
+            wmove(w, cy, cx);
+            curs_set(1);
+        } else {
+            curs_set(0);
+        }
+    }
     wnoutrefresh(w);
 }
 
@@ -145,6 +174,7 @@ static void draw_ui(const AppState *state) {
             " Editor ",
             state->focused_panel == PANEL_EDITOR
         );
+        draw_editor_content(w_editor, state);
 
         draw_boxed_window(
             w_response,
@@ -156,6 +186,44 @@ static void draw_ui(const AppState *state) {
     
 
     doupdate();
+}
+
+static void editor_handle_insert_key(AppState *s, int ch) {
+    // Backspace (varia por terminal)
+    if (ch == KEY_BACKSPACE || ch == 127 || ch == 8) {
+        if (s->url_cursor > 0 && s->url_len > 0) {
+            // remove char before cursor
+            memmove(&s->url[s->url_cursor - 1],
+                    &s->url[s->url_cursor],
+                    (size_t)(s->url_len - s->url_cursor + 1)); // +1 includes '\0'
+            s->url_cursor--;
+            s->url_len--;
+        }
+        return;
+    }
+
+    // Left/Right arrows
+    if (ch == KEY_LEFT) {
+        if (s->url_cursor > 0) s->url_cursor--;
+        return;
+    }
+    if (ch == KEY_RIGHT) {
+        if (s->url_cursor < s->url_len) s->url_cursor++;
+        return;
+    }
+
+    // Printable ASCII (keep it simple for MVP)
+    if (ch >= 32 && ch <= 126) {
+        if (s->url_len >= URL_MAX - 1) return;
+
+        // insert at cursor
+        memmove(&s->url[s->url_cursor + 1],
+                &s->url[s->url_cursor],
+                (size_t)(s->url_len - s->url_cursor + 1)); // shift incl '\0'
+        s->url[s->url_cursor] = (char)ch;
+        s->url_cursor++;
+        s->url_len++;
+    }
 }
 
 int main(void) {
@@ -182,8 +250,11 @@ int main(void) {
         if (ch == ERR) continue;
 
         Action a = keymap_resolve(&keymap, state.mode, ch);
+
         if (a != ACT_NONE) {
             dispatch_action(&state, a);
+        } else if (state.mode == MODE_INSERT) {
+            editor_handle_insert_key(&state, ch);
         }
     }
 
