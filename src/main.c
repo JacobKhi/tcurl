@@ -28,15 +28,20 @@ static const char *panel_label(Panel p) {
     }
 }
 
-static void draw_boxed_window(WINDOW *w, const char *title) {
+static void draw_boxed_window(WINDOW *w, const char *title, int focused) {
     int h, wd;
     getmaxyx(w, h, wd);
 
     werase(w);
+
+    if (focused) wattron(w, A_REVERSE);
     box(w, 0, 0);
+    if (focused) wattroff(w, A_REVERSE);
 
     if (title && wd > 4) {
+        if (focused) wattron(w, A_REVERSE);
         mvwaddnstr(w, 0, 2, title, wd - 4);
+        if (focused) wattroff(w, A_REVERSE);
     }
 
     wnoutrefresh(w);
@@ -106,9 +111,24 @@ static void draw_ui(const AppState *state) {
     wnoutrefresh(stdscr);
 
     if (w_history && w_editor && w_response) {
-        draw_boxed_window(w_history,  " History ");
-        draw_boxed_window(w_editor,   " Editor ");
-        draw_boxed_window(w_response, " Response ");
+        draw_boxed_window(
+            w_history,
+            " History ",
+            state->focused_panel == PANEL_HISTORY
+        );
+
+        draw_boxed_window(
+            w_editor,
+            " Editor ",
+            state->focused_panel == PANEL_EDITOR
+        );
+
+        draw_boxed_window(
+            w_response,
+            " Response ",
+            state->focused_panel == PANEL_RESPONSE
+        );
+
     }
 
     doupdate();
