@@ -28,6 +28,10 @@ typedef struct {
     long status;
     char *body; 
     char *body_view;
+
+    double elapsed_ms;
+    char *error;
+    int is_json;
 } HttpResponse;
 
 typedef enum {

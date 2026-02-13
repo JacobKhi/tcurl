@@ -27,6 +27,8 @@ void app_state_init(AppState *s) {
 
     s->response.body = NULL;
     s->response.body_view = NULL;
+    s->response.elapsed_ms = 0.0;
+    s->response.error = NULL;
 }
 
 void app_state_destroy(AppState *s) {
@@ -35,4 +37,5 @@ void app_state_destroy(AppState *s) {
 
     free(s->response.body);
     free(s->response.body_view);
+    free(s->response.error);
 }

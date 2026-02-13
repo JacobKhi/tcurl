@@ -104,23 +104,51 @@ static void draw_response_content(WINDOW *w, const AppState *state) {
         return;
     }
 
+    if (state->response.error) {
+        wattron(w, A_BOLD);
+        mvwaddnstr(w, 1, 2, "Request failed:", wd - 4);
+        wattroff(w, A_BOLD);
+
+        mvwaddnstr(w, 2, 2, state->response.error, wd - 4);
+        wnoutrefresh(w);
+        return;
+    }
+
     if (!state->response.body_view) {
         mvwaddnstr(w, 1, 2, "No response yet", wd - 4);
         wnoutrefresh(w);
         return;
     }
 
-    char status[128];
-    snprintf(status, sizeof(status), "Status: %ld | scroll: %d",
-             state->response.status, state->response_scroll);
-    mvwaddnstr(w, 1, 2, status, wd - 4);
+    size_t bytes = strlen(state->response.body_view);
 
-    int visible = h - 3;
-    if (visible <= 0) { wnoutrefresh(w); return; }
+    char meta[256];
+    snprintf(meta, sizeof(meta),
+        "Status: %ld | Time: %.0f ms | Size: %.1f KB%s | scroll:%d",
+        state->response.status,
+        state->response.elapsed_ms,
+        bytes / 1024.0,
+        state->response.is_json ? " | JSON" : "",
+        state->response_scroll
+    );
 
-    const char *p = skip_lines(state->response.body_view, state->response_scroll);
+    mvwaddnstr(w, 1, 2, meta, wd - 4);
 
-    int row = 2;
+    mvwhline(w, 2, 1, ACS_HLINE, wd - 2);
+
+    int body_start = 3;
+    int visible = h - body_start - 1;
+    if (visible <= 0) {
+        wnoutrefresh(w);
+        return;
+    }
+
+    const char *p = skip_lines(
+        state->response.body_view,
+        state->response_scroll
+    );
+
+    int row = body_start;
     int clip = wd - 4;
     if (clip < 0) clip = 0;
 
@@ -133,8 +161,8 @@ static void draw_response_content(WINDOW *w, const AppState *state) {
 
         int len = (int)(nl - p);
         if (len > clip) len = clip;
-        mvwaddnstr(w, row, 2, p, len);
 
+        mvwaddnstr(w, row, 2, p, len);
         p = nl + 1;
         row++;
     }

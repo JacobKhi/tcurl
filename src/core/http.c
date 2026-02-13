@@ -1,8 +1,10 @@
 #include "core/http.h"
-#include <ctype.h>
+
 #include <curl/curl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <ctype.h>
 
 typedef struct {
     char *data;
@@ -11,9 +13,9 @@ typedef struct {
 
 static size_t write_cb(void *ptr, size_t size, size_t nmemb, void *userdata) {
     size_t total = size * nmemb;
-    Buffer *buf = (Buffer *)userdata;
+    Buffer *buf = userdata;
 
-    char *newp = (char *)realloc(buf->data, buf->size + total + 1);
+    char *newp = realloc(buf->data, buf->size + total + 1);
     if (!newp) return 0;
 
     buf->data = newp;
@@ -31,21 +33,22 @@ static void rtrim(char *s) {
     }
 }
 
-static char *ltrim_ptr(char *s) {
+static char *ltrim(char *s) {
     while (*s && isspace((unsigned char)*s)) s++;
     return s;
 }
 
-static int starts_with_ci(const char *s, const char *prefix) {
-    while (*prefix && *s) {
-        if (tolower((unsigned char)*s) != tolower((unsigned char)*prefix)) return 0;
-        s++;
-        prefix++;
+static int starts_with_ci(const char *s, const char *p) {
+    while (*p && *s) {
+        if (tolower((unsigned char)*s) != tolower((unsigned char)*p))
+            return 0;
+        s++; p++;
     }
-    return *prefix == '\0';
+    return *p == '\0';
 }
 
-static struct curl_slist *headers_from_textbuf(const TextBuffer *tb, int *has_content_type) {
+static struct curl_slist *
+headers_from_textbuf(const TextBuffer *tb, int *has_content_type) {
     if (has_content_type) *has_content_type = 0;
     if (!tb) return NULL;
 
@@ -53,41 +56,36 @@ static struct curl_slist *headers_from_textbuf(const TextBuffer *tb, int *has_co
 
     for (int i = 0; i < tb->line_count; i++) {
         const char *line = tb->lines[i];
-        if (!line || line[0] == '\0') continue;
+        if (!line || !*line) continue;
 
         char *tmp = strdup(line);
         if (!tmp) continue;
 
-        char *p = ltrim_ptr(tmp);
+        char *p = ltrim(tmp);
         rtrim(p);
-        if (*p == '\0') { free(tmp); continue; }
 
         char *colon = strchr(p, ':');
         if (!colon) { free(tmp); continue; }
 
         *colon = '\0';
-        char *key = ltrim_ptr(p);
+        char *key = ltrim(p);
         rtrim(key);
 
-        char *value = ltrim_ptr(colon + 1);
-        rtrim(value);
+        char *val = ltrim(colon + 1);
+        rtrim(val);
 
-        if (*key == '\0') { free(tmp); continue; }
+        if (!*key) { free(tmp); continue; }
 
-        if (has_content_type && starts_with_ci(key, "content-type")) {
+        if (has_content_type && starts_with_ci(key, "content-type"))
             *has_content_type = 1;
-        }
 
-        size_t need = strlen(key) + 2 + strlen(value) + 1;
-        char *hv = (char *)malloc(need);
-        if (!hv) { free(tmp); continue; }
+        char header[1024];
+        if (*val)
+            snprintf(header, sizeof(header), "%s: %s", key, val);
+        else
+            snprintf(header, sizeof(header), "%s:", key);
 
-        if (*value) snprintf(hv, need, "%s: %s", key, value);
-        else snprintf(hv, need, "%s:", key);
-
-        list = curl_slist_append(list, hv);
-
-        free(hv);
+        list = curl_slist_append(list, header);
         free(tmp);
     }
 
@@ -101,32 +99,33 @@ int http_request(
     const TextBuffer *headers_tb,
     HttpResponse *out
 ) {
-    if (!url || !out) return -1;
-
     CURL *curl = curl_easy_init();
     if (!curl) return -1;
 
     Buffer buf = {0};
+    char errbuf[CURL_ERROR_SIZE];
+    errbuf[0] = '\0';
 
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buf);
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
 
-    const char *payload = body ? body : "";
+    int has_ct = 0;
+    struct curl_slist *headers =
+        headers_from_textbuf(headers_tb, &has_ct);
 
-    int has_content_type = 0;
-    struct curl_slist *headers = headers_from_textbuf(headers_tb, &has_content_type);
+    int sends_body = (method == HTTP_POST || method == HTTP_PUT);
 
-    int sending_body = (method == HTTP_POST || method == HTTP_PUT);
-    if (sending_body && !has_content_type) {
+    if (sends_body && !has_ct)
         headers = curl_slist_append(headers, "Content-Type: application/json");
-    }
 
-    if (headers) {
+    if (headers)
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    }
+
+    const char *payload = body ? body : "";
 
     switch (method) {
         case HTTP_GET:
@@ -148,26 +147,28 @@ int http_request(
         case HTTP_DELETE:
             curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
             break;
-
-        default:
-            curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
-            break;
     }
 
     CURLcode res = curl_easy_perform(curl);
 
+    double total_time = 0.0;
+    curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &total_time);
+    out->elapsed_ms = total_time * 1000.0;
+
     if (res != CURLE_OK) {
         out->status = 0;
-        free(buf.data);
-        buf.data = NULL;
+        out->body = NULL;
+        out->error = strdup(errbuf[0] ? errbuf : curl_easy_strerror(res));
 
         if (headers) curl_slist_free_all(headers);
         curl_easy_cleanup(curl);
+        free(buf.data);
         return -1;
     }
 
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &out->status);
     out->body = buf.data;
+    out->error = NULL;
 
     if (headers) curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
