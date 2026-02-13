@@ -38,7 +38,9 @@ void dispatch_action(AppState *s, Action a) {
 
         case ACT_TOGGLE_EDITOR_FIELD:
             if (s->focused_panel == PANEL_EDITOR) {
-                s->active_field = (s->active_field == EDIT_FIELD_URL) ? EDIT_FIELD_BODY : EDIT_FIELD_URL;
+                if (s->active_field == EDIT_FIELD_URL) s->active_field = EDIT_FIELD_BODY;
+                else if (s->active_field == EDIT_FIELD_BODY) s->active_field = EDIT_FIELD_HEADERS;
+                else s->active_field = EDIT_FIELD_URL;
             }
             break;
 

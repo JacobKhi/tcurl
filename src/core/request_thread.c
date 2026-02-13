@@ -30,7 +30,7 @@ void *request_thread(void *arg) {
         return NULL;
     }
 
-    (void)http_request(s->url, s->method, payload, &s->response);
+    (void)http_request(s->url, s->method, payload, &s->headers, &s->response);
 
     free(payload);
 

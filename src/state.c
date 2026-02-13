@@ -14,6 +14,7 @@ void app_state_init(AppState *s) {
     s->url_cursor = 0;
 
     tb_init(&s->body);
+    tb_init(&s->headers);
     s->active_field = EDIT_FIELD_URL;
 
     s->response.status = 0;
@@ -30,7 +31,7 @@ void app_state_init(AppState *s) {
 
 void app_state_destroy(AppState *s) {
     tb_free(&s->body);
-    free(s->response.body);
+    tb_free(&s->headers);
 
     free(s->response.body);
     free(s->response.body_view);

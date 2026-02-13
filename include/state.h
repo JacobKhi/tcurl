@@ -20,7 +20,8 @@ typedef enum {
 
 typedef enum {
     EDIT_FIELD_URL = 0,
-    EDIT_FIELD_BODY = 1
+    EDIT_FIELD_BODY = 1,
+    EDIT_FIELD_HEADERS = 2
 } EditField;
 
 typedef struct {
@@ -50,6 +51,7 @@ typedef struct {
     int url_cursor;
 
     TextBuffer body;
+    TextBuffer headers;
 
     EditField active_field;
 
