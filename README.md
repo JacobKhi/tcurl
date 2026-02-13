@@ -64,9 +64,37 @@ Optional dependency check:
 make check-deps
 ```
 
+## Run from Anywhere
+
+Install user-local (no sudo):
+
+```sh
+make install-user
+```
+
+Then run from any directory:
+
+```sh
+tcurl
+```
+
+If `tcurl` is not found, add `~/.local/bin` to your `PATH`.
+
+Configuration directory resolution order:
+
+1. `TCURL_CONFIG_DIR`
+2. `$XDG_CONFIG_HOME/tcurl`
+3. `$HOME/.config/tcurl`
+4. Fallback read-only defaults from `<executable_dir>/config`
+
+Notes:
+
+- Config reads try user config first, then fallback defaults.
+- Config writes (for example `:theme <name> -s`) always target the user config directory.
+
 ## Keybindings (Default)
 
-From `config/keymap.conf`:
+From `keymap.conf` in the active config directory:
 
 - `h` / `l`: focus left/right panel
 - `j` / `k`: move down/up (history selection or response scroll)
@@ -99,7 +127,7 @@ Command mode:
 - `:h` or `:help`: print commands + loaded keybindings in `Response` panel
 - `:theme list`: list available theme presets
 - `:theme <name>`: apply theme preset for current session
-- `:theme <name> -s` or `:theme <name> --save`: apply and persist active preset to `config/layout.conf`
+- `:theme <name> -s` or `:theme <name> --save`: apply and persist active preset to active user `layout.conf`
 - `:clear!` or `:ch!`: clear history from memory and persisted storage
 
 ## History Configuration
@@ -114,7 +142,7 @@ The app keeps only the newest `max_entries` requests.
 
 ## Environments
 
-Environments are loaded from `config/envs.json`:
+Environments are loaded from `envs.json` in the active config directory:
 
 ```json
 {
@@ -139,12 +167,12 @@ If a template variable is missing in the active environment, request execution f
 
 ## Header Autocomplete
 
-Header suggestions come from `config/headers.txt` (one header per line, `#` comments allowed).
+Header suggestions come from `headers.txt` in the active config directory (one header per line, `#` comments allowed).
 In insert mode with HEADERS active, press `Shift+Tab` to complete/cycle matching header names.
 
 ## Layout Profiles
 
-Layout is loaded at startup from `config/layout.conf`:
+Layout is loaded at startup from `layout.conf` in the active config directory:
 
 ```ini
 profile = classic
@@ -180,7 +208,7 @@ Notes:
 - Missing/invalid config falls back to `classic` with default slots.
 - In `quad`, panel slots must be unique; duplicated slots fall back to defaults.
 - `focus_editor` ignores `quad_*` slot settings.
-- `theme_preset` points to a preset name from `config/themes.conf`.
+- `theme_preset` points to a preset name from `themes.conf` in the active config directory.
 - Percentage controls:
   - `classic_history_width_pct`: `20..70`
   - `classic_editor_height_pct`: `25..75`
@@ -205,11 +233,11 @@ Persist current preset to config:
 Notes:
 
 - Without `-s`/`--save`, change is session-only.
-- With `-s`/`--save`, `config/layout.conf` is rewritten in canonical format and updates `theme_preset`.
+- With `-s`/`--save`, the active user `layout.conf` is rewritten in canonical format and updates `theme_preset`.
 
 ## Theme Presets File
 
-Theme presets are loaded from `config/themes.conf` using INI-style sections:
+Theme presets are loaded from `themes.conf` in the active config directory using INI-style sections:
 
 ```ini
 [mono]
@@ -238,6 +266,12 @@ You can create new presets by adding new sections (for example `[solarized]`) wi
 - `include/`: public/internal headers
 - `config/`: keymap configuration
 - `scripts/`: setup helpers
+
+Uninstall user-local binary:
+
+```sh
+make uninstall-user
+```
 
 ## Current Limitations / Roadmap
 
