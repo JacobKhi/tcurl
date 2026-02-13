@@ -9,20 +9,23 @@ It follows a keyboard-driven workflow inspired by vim while using real HTTP requ
   - `classic` (History left, Editor top-right, Response bottom-right)
   - `quad` (2x2 quadrant placement via config)
   - `focus_editor` (large editor on top, History/Response at bottom)
-- Configurable panel sizing via `config/layout.conf` and theme presets via `config/themes.conf`
+- Configurable panel sizing via `layout.conf` and theme presets via `themes.conf` in active config dir
 - Mode-based keyboard workflow (`normal`, `insert`, `command`, `search`)
 - Vim-like command line (`:`) and search (`/`) in the bottom bar
+- Command history navigation in `:` mode (`Up` / `Down`)
 - Request editing:
   - URL field
   - dedicated BODY + HEADERS split editor (`classic` / `quad`)
   - tabbed editor (`URL | BODY | HEADERS`) in `focus_editor`
   - multiline body
   - multiline headers
-  - headers autocomplete from `config/headers.txt`
+  - headers autocomplete from `headers.txt` in active config dir
 - HTTP methods: `GET`, `POST`, `PUT`, `DELETE`
-- Environments and variables from `config/envs.json`
+- Environments and variables from `envs.json` in active config dir
 - Template substitution for `{{VAR}}` in URL, BODY, and HEADERS
+- Authorization helpers (`:auth bearer`, `:auth basic`)
 - Async requests (worker thread) so UI stays responsive
+- State synchronization with mutex guards between UI and request thread
 - Response metadata:
   - status code
   - elapsed time
@@ -30,8 +33,10 @@ It follows a keyboard-driven workflow inspired by vim while using real HTTP requ
   - JSON indicator
 - JSON pretty-print (fallback to raw text)
 - Persistent request history (JSONL) with load-back into editor/response
+- History load stats for corrupted-line tolerance + incremental append persistence
 - Replay from history snapshots
 - Contextual search with next/prev navigation (`n` / `N`)
+- Request export commands (`:export curl`, `:export json`)
 
 ## Dependencies
 
@@ -128,11 +133,18 @@ Command mode:
 - `:theme list`: list available theme presets
 - `:theme <name>`: apply theme preset for current session
 - `:theme <name> -s` or `:theme <name> --save`: apply and persist active preset to active user `layout.conf`
+- `:export curl` or `:export json`: export current request
+- `:auth bearer <token>`: set/update `Authorization: Bearer <token>`
+- `:auth basic <user>:<pass>`: set/update `Authorization: Basic <base64>`
+- `:find <term>`: run contextual search immediately
+- `:set`: show runtime settings
+- `:set search_target auto|history|response`: override `/` default target
+- `:set max_entries <n>`: update history retention for current session
 - `:clear!` or `:ch!`: clear history from memory and persisted storage
 
 ## History Configuration
 
-Persistent history retention is configurable in `config/history.conf`:
+Persistent history retention is configurable in `history.conf` in the active config directory:
 
 ```ini
 max_entries = 500
@@ -259,6 +271,22 @@ You can create new presets by adding new sections (for example `[solarized]`) wi
 - Line number gutter in BODY and HEADERS
 - Vertical scrolling that follows cursor position for long content
 
+## Testing
+
+Run test suite:
+
+```sh
+make test
+```
+
+Run tests with sanitizers (ASan/UBSan):
+
+```sh
+make test-sanitizers
+```
+
+CI runs build + tests on Linux/macOS and sanitizer tests on Linux.
+
 ## Project Structure
 
 - `src/core/`: core logic (http, dispatch, keymap, history, text buffer)
@@ -273,8 +301,15 @@ Uninstall user-local binary:
 make uninstall-user
 ```
 
+Build release tarball:
+
+```sh
+make release
+# optional version tag:
+sh scripts/release.sh 0.1.0
+```
+
 ## Current Limitations / Roadmap
 
-- `command` and `search` modes exist, but advanced behaviors are still minimal
-- No request export yet (`curl`/JSON)
-- No advanced auth helpers yet
+- `command` and `search` modes exist, but advanced command history/interactive UX is still minimal
+- History compaction strategy is intentionally simple and may still be optimized for very large datasets
