@@ -1,6 +1,5 @@
 #include "core/env.h"
-
-#include <cjson/cJSON.h>
+#include "core/cjson_compat.h"
 
 #include <ctype.h>
 #include <errno.h>

@@ -1,5 +1,5 @@
 #include "core/format.h"
-#include <cjson/cJSON.h>
+#include "core/cjson_compat.h"
 #include <stdlib.h>
 
 char *json_pretty_print(const char *input) {
