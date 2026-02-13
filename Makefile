@@ -11,6 +11,7 @@ SRC = \
   src/core/actions.c \
   src/core/keymap.c \
   src/core/dispatch.c \
+  src/core/paths.c \
   src/core/textbuf.c \
   src/core/history.c \
   src/core/history_storage.c \
@@ -51,4 +52,39 @@ check-deps:
 	fi; \
 	echo "All dependencies are available."
 
-.PHONY: all clean deps check-deps
+install-user: $(TARGET)
+	@set -e; \
+	BIN_DIR="$$HOME/.local/bin"; \
+	CONF_DIR="$$HOME/.config/tcurl"; \
+	mkdir -p "$$BIN_DIR" "$$CONF_DIR"; \
+	cp "$(TARGET)" "$$BIN_DIR/tcurl"; \
+	chmod 755 "$$BIN_DIR/tcurl"; \
+	for f in keymap.conf layout.conf themes.conf envs.json headers.txt history.conf; do \
+		if [ ! -f "$$CONF_DIR/$$f" ]; then \
+			cp "config/$$f" "$$CONF_DIR/$$f"; \
+		fi; \
+	done; \
+	echo "Installed $$BIN_DIR/tcurl"; \
+	echo "Config directory: $$CONF_DIR"; \
+	case ":$$PATH:" in \
+		*":$$BIN_DIR:"*) \
+			echo "PATH check: $$BIN_DIR is already available." ;; \
+		*) \
+			echo "WARNING: $$BIN_DIR is not in PATH."; \
+			echo "Add this to your shell config (e.g. ~/.zshrc):"; \
+			echo '  export PATH="$$HOME/.local/bin:$$PATH"'; \
+			echo "Then restart your shell."; ;; \
+	esac
+
+uninstall-user:
+	@set -e; \
+	BIN_PATH="$$HOME/.local/bin/tcurl"; \
+	if [ -f "$$BIN_PATH" ]; then \
+		rm -f "$$BIN_PATH"; \
+		echo "Removed $$BIN_PATH"; \
+	else \
+		echo "$$BIN_PATH not found."; \
+	fi; \
+	echo "User config kept at $$HOME/.config/tcurl"
+
+.PHONY: all clean deps check-deps install-user uninstall-user

@@ -16,7 +16,10 @@ int main(void) {
     app_state_init(&state);
 
     Keymap keymap;
-    (void)keymap_load_file(&keymap, "config/keymap.conf");
+    (void)keymap_load_file(
+        &keymap,
+        state.paths.keymap_conf ? state.paths.keymap_conf : "config/keymap.conf"
+    );
 
     initscr();
     set_escdelay(25);

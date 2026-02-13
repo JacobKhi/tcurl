@@ -5,9 +5,16 @@
 #include "core/history_storage.h"
 #include "core/env.h"
 #include "core/layout.h"
+#include "core/paths.h"
 #include "core/textbuf.h"
 
 void app_state_init(AppState *s) {
+    paths_init(&s->paths);
+    if (paths_resolve_config_dir(&s->paths) != 0 || paths_build_file_paths(&s->paths) != 0) {
+        paths_free(&s->paths);
+        paths_init(&s->paths);
+    }
+
     s->running = 1;
     s->mode = MODE_NORMAL;
     s->focused_panel = PANEL_HISTORY;
@@ -17,7 +24,7 @@ void app_state_init(AppState *s) {
     s->quad_response_slot = LAYOUT_SLOT_BR;
     memset(s->active_theme_preset, 0, sizeof(s->active_theme_preset));
     (void)layout_load_config(
-        "config/layout.conf",
+        s->paths.layout_conf_load ? s->paths.layout_conf_load : "config/layout.conf",
         &s->ui_layout_profile,
         &s->quad_history_slot,
         &s->quad_editor_slot,
@@ -28,7 +35,10 @@ void app_state_init(AppState *s) {
         sizeof(s->active_theme_preset)
     );
     layout_theme_catalog_init(&s->theme_catalog);
-    (void)layout_theme_catalog_load("config/themes.conf", &s->theme_catalog);
+    (void)layout_theme_catalog_load(
+        s->paths.themes_conf ? s->paths.themes_conf : "config/themes.conf",
+        &s->theme_catalog
+    );
     if (s->active_theme_preset[0] != '\0') {
         LayoutTheme themed;
         if (layout_theme_catalog_apply(&s->theme_catalog, s->active_theme_preset, &themed) == 0) {
@@ -60,7 +70,10 @@ void app_state_init(AppState *s) {
     s->response.elapsed_ms = 0.0;
     s->response.error = NULL;
 
-    s->history_max_entries = history_config_load_max_entries("config/history.conf", 500);
+    s->history_max_entries = history_config_load_max_entries(
+        s->paths.history_conf ? s->paths.history_conf : "config/history.conf",
+        500
+    );
     s->history_path = history_storage_default_path();
     if (!s->history_path) {
         s->history_path = strdup("./history.jsonl");
@@ -75,12 +88,15 @@ void app_state_init(AppState *s) {
     s->history_selected = 0;
 
     env_store_init(&s->envs);
-    (void)env_store_load_file(&s->envs, "config/envs.json");
+    (void)env_store_load_file(
+        &s->envs,
+        s->paths.envs_json ? s->paths.envs_json : "config/envs.json"
+    );
 
     s->header_suggestions = NULL;
     s->header_suggestions_count = 0;
     (void)header_suggestions_load(
-        "config/headers.txt",
+        s->paths.headers_txt ? s->paths.headers_txt : "config/headers.txt",
         &s->header_suggestions,
         &s->header_suggestions_count
     );
@@ -119,6 +135,8 @@ void app_state_destroy(AppState *s) {
 
     free(s->history_path);
     s->history_path = NULL;
+
+    paths_free(&s->paths);
 
     layout_theme_catalog_free(&s->theme_catalog);
     s->active_theme_preset[0] = '\0';
