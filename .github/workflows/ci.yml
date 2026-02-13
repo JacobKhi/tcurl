@@ -26,6 +26,11 @@ jobs:
           brew update
           brew install pkg-config ncurses curl cjson
 
+      - name: Configure pkg-config paths (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          echo "PKG_CONFIG_PATH=$(brew --prefix ncurses)/lib/pkgconfig:$(brew --prefix curl)/lib/pkgconfig:$(brew --prefix cjson)/lib/pkgconfig:${PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
+
       - name: Check dependencies
         run: make check-deps
 
