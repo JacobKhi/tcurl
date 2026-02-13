@@ -83,6 +83,17 @@ static void draw_history_content(WINDOW *w, const AppState *state) {
     wnoutrefresh(w);
 }
 
+static const char *skip_lines(const char *s, int n) {
+    const char *p = s;
+    while (p && *p && n > 0) {
+        const char *nl = strchr(p, '\n');
+        if (!nl) return p + strlen(p);
+        p = nl + 1;
+        n--;
+    }
+    return p;
+}
+
 static void draw_response_content(WINDOW *w, const AppState *state) {
     int h, wd;
     getmaxyx(w, h, wd);
@@ -99,17 +110,33 @@ static void draw_response_content(WINDOW *w, const AppState *state) {
         return;
     }
 
-    char status[64];
-    snprintf(status, sizeof(status), "Status: %ld", state->response.status);
+    char status[128];
+    snprintf(status, sizeof(status), "Status: %ld | scroll: %d",
+             state->response.status, state->response_scroll);
     mvwaddnstr(w, 1, 2, status, wd - 4);
 
+    int visible = h - 3;
+    if (visible <= 0) { wnoutrefresh(w); return; }
+
+    const char *p = skip_lines(state->response.body, state->response_scroll);
+
     int row = 2;
-    const char *p = state->response.body;
+    int clip = wd - 4;
+    if (clip < 0) clip = 0;
+
     while (*p && row < h - 1) {
-        mvwaddnstr(w, row++, 2, p, wd - 4);
         const char *nl = strchr(p, '\n');
-        if (!nl) break;
+        if (!nl) {
+            mvwaddnstr(w, row, 2, p, clip);
+            break;
+        }
+
+        int len = (int)(nl - p);
+        if (len > clip) len = clip;
+        mvwaddnstr(w, row, 2, p, len);
+
         p = nl + 1;
+        row++;
     }
 
     wnoutrefresh(w);

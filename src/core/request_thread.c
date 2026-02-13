@@ -27,7 +27,8 @@ void *request_thread(void *arg) {
     (void)http_request(s->url, s->method, payload, &s->response);
 
     free(payload);
-
+    
+    s->response_scroll = 0;
     s->is_request_in_flight = 0;
     return NULL;
 }

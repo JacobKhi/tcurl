@@ -21,6 +21,8 @@ void app_state_init(AppState *s) {
     s->is_request_in_flight = 0;
 
     s->method = HTTP_GET;
+
+    s->response_scroll = 0;
 }
 
 void app_state_destroy(AppState *s) {

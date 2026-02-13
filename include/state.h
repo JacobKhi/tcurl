@@ -56,6 +56,8 @@ typedef struct {
     int is_request_in_flight;
 
     HttpMethod method;
+
+    int response_scroll;
 } AppState;
 
 void app_state_init(AppState *s);

@@ -23,12 +23,16 @@ void dispatch_action(AppState *s, Action a) {
         case ACT_MOVE_DOWN:
             if (s->focused_panel == PANEL_HISTORY) {
                 s->history_selected++;
+            }else if (s->focused_panel == PANEL_RESPONSE) {
+               s->response_scroll++;
             }
             break;
 
         case ACT_MOVE_UP:
             if (s->focused_panel == PANEL_HISTORY && s->history_selected > 0) {
                 s->history_selected--;
+            }else if (s->focused_panel == PANEL_RESPONSE) {
+               if (s->response_scroll > 0) s->response_scroll--;
             }
             break;
 
