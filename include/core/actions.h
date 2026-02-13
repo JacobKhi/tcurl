@@ -27,3 +27,4 @@ typedef enum {
 Action action_from_string(const char *name);
 
 const char *action_to_string(Action a);
+const char *action_description(Action a);

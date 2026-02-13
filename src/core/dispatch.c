@@ -1,10 +1,13 @@
 #include "state.h"
 #include "core/actions.h"
 #include "core/history.h"
+#include "core/history_storage.h"
 #include <pthread.h>
 #include "core/request_thread.h"
 #include "core/dispatch.h"
 #include "core/env.h"
+#include "core/layout.h"
+#include "ui/draw.h"
 #include <ncurses.h>
 #include <ctype.h>
 #include <stdarg.h>
@@ -358,6 +361,100 @@ static int key_name_from_code(int code, char *out, size_t out_sz) {
     return 0;
 }
 
+static void command_apply_theme(AppState *s, const char *preset, int save) {
+    if (!preset || !preset[0]) {
+        response_set_error(s, "Usage: :theme <name> [-s|--save]");
+        return;
+    }
+
+    LayoutTheme themed;
+    if (layout_theme_catalog_apply(&s->theme_catalog, preset, &themed) != 0) {
+        response_set_error(s, "Unknown theme preset. Use :theme list");
+        return;
+    }
+
+    s->ui_theme = themed;
+    strncpy(s->active_theme_preset, preset, sizeof(s->active_theme_preset) - 1);
+    s->active_theme_preset[sizeof(s->active_theme_preset) - 1] = '\0';
+    ui_draw_init_theme(s);
+
+    if (save) {
+        int rc = layout_save_config(
+            "config/layout.conf",
+            s->ui_layout_profile,
+            s->quad_history_slot,
+            s->quad_editor_slot,
+            s->quad_response_slot,
+            &s->ui_layout_sizing,
+            &s->ui_theme,
+            s->active_theme_preset
+        );
+
+        char msg[256];
+        if (rc == 0) {
+            snprintf(msg, sizeof(msg), "Theme '%s' applied and saved to config/layout.conf", s->active_theme_preset);
+        } else {
+            snprintf(
+                msg,
+                sizeof(msg),
+                "Theme '%s' applied for this session, but failed to save config/layout.conf",
+                s->active_theme_preset
+            );
+        }
+        response_set_text(s, msg);
+        return;
+    }
+
+    char msg[192];
+    snprintf(msg, sizeof(msg), "Theme '%s' applied for this session", s->active_theme_preset);
+    response_set_text(s, msg);
+}
+
+static void command_list_themes(AppState *s) {
+    char *list = layout_theme_catalog_list_names(&s->theme_catalog);
+    if (!list) {
+        response_set_error(s, "Out of memory listing themes");
+        return;
+    }
+    response_set_text(s, list);
+    free(list);
+}
+
+static void command_clear_history(AppState *s) {
+    if (!s->history) {
+        response_set_error(s, "History is not initialized");
+        return;
+    }
+
+    if (s->is_request_in_flight) {
+        response_set_error(s, "Cannot clear history while request is in flight");
+        return;
+    }
+
+    history_free(s->history);
+    history_init(s->history);
+    s->history_selected = 0;
+    s->search_match_index = -1;
+    s->search_not_found = 0;
+
+    int rc = 1;
+    if (s->history_path) {
+        rc = history_storage_save(s->history, s->history_path);
+    } else {
+        char *path = history_storage_default_path();
+        if (path) {
+            rc = history_storage_save(s->history, path);
+            free(path);
+        }
+    }
+
+    if (rc == 0) {
+        response_set_text(s, "History cleared");
+    } else {
+        response_set_text(s, "History cleared in memory, but failed to persist storage");
+    }
+}
+
 static char *build_help_text(const Keymap *km) {
     if (!km) return strdup("No keymap loaded.");
 
@@ -367,7 +464,11 @@ static char *build_help_text(const Keymap *km) {
 
     if (!appendf(&buf, &len, &cap, "Commands:\n")) goto fail;
     if (!appendf(&buf, &len, &cap, "  :q | :quit  Quit application\n")) goto fail;
-    if (!appendf(&buf, &len, &cap, "  :h | :help  Show this help\n\n")) goto fail;
+    if (!appendf(&buf, &len, &cap, "  :h | :help  Show this help\n")) goto fail;
+    if (!appendf(&buf, &len, &cap, "  :theme list  List available theme presets\n")) goto fail;
+    if (!appendf(&buf, &len, &cap, "  :theme <name>  Apply theme preset for current session\n")) goto fail;
+    if (!appendf(&buf, &len, &cap, "  :theme <name> -s|--save  Apply and persist active preset\n")) goto fail;
+    if (!appendf(&buf, &len, &cap, "  :clear! | :ch!  Clear history (memory + storage)\n\n")) goto fail;
     if (!appendf(&buf, &len, &cap, "Key bindings:\n")) goto fail;
 
     for (int m = 0; m < MODE_COUNT; m++) {
@@ -378,7 +479,12 @@ static char *build_help_text(const Keymap *km) {
 
             char key_name[32];
             if (!key_name_from_code(k, key_name, sizeof(key_name))) continue;
-            if (!appendf(&buf, &len, &cap, "  %-8s -> %s\n", key_name, action_to_string(a))) goto fail;
+            const char *desc = action_description(a);
+            if (desc && desc[0]) {
+                if (!appendf(&buf, &len, &cap, "  %-8s -> %-20s %s\n", key_name, action_to_string(a), desc)) goto fail;
+            } else {
+                if (!appendf(&buf, &len, &cap, "  %-8s -> %s\n", key_name, action_to_string(a))) goto fail;
+            }
         }
         if (!appendf(&buf, &len, &cap, "\n")) goto fail;
     }
@@ -429,6 +535,66 @@ void dispatch_execute_command(AppState *s, const Keymap *km, const char *cmd) {
             response_set_text(s, help);
             free(help);
         }
+        s->mode = MODE_NORMAL;
+        clear_prompt(s);
+        return;
+    }
+
+    if (strncmp(p, "theme", 5) == 0 && (p[5] == '\0' || isspace((unsigned char)p[5]))) {
+        char *args = p + 5;
+        while (*args && isspace((unsigned char)*args)) args++;
+
+        if (*args == '\0') {
+            response_set_error(s, "Usage: :theme <name> [-s|--save] | :theme list");
+            s->mode = MODE_NORMAL;
+            clear_prompt(s);
+            return;
+        }
+
+        char *name = strtok(args, " \t");
+        char *flag = strtok(NULL, " \t");
+        char *extra = strtok(NULL, " \t");
+
+        if (!name || extra) {
+            response_set_error(s, "Usage: :theme <name> [-s|--save] | :theme list");
+            s->mode = MODE_NORMAL;
+            clear_prompt(s);
+            return;
+        }
+
+        if (strcmp(name, "list") == 0) {
+            if (flag) {
+                response_set_error(s, "Usage: :theme list");
+                s->mode = MODE_NORMAL;
+                clear_prompt(s);
+                return;
+            }
+            command_list_themes(s);
+            s->mode = MODE_NORMAL;
+            clear_prompt(s);
+            return;
+        }
+
+        int save = 0;
+        if (flag) {
+            if (strcmp(flag, "-s") == 0 || strcmp(flag, "--save") == 0) {
+                save = 1;
+            } else {
+                response_set_error(s, "Invalid flag. Use -s or --save");
+                s->mode = MODE_NORMAL;
+                clear_prompt(s);
+                return;
+            }
+        }
+
+        command_apply_theme(s, name, save);
+        s->mode = MODE_NORMAL;
+        clear_prompt(s);
+        return;
+    }
+
+    if (strcmp(p, "clear!") == 0 || strcmp(p, "ch!") == 0) {
+        command_clear_history(s);
         s->mode = MODE_NORMAL;
         clear_prompt(s);
         return;
