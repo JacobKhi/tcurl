@@ -527,8 +527,10 @@ int layout_theme_catalog_load(const char *path, ThemeCatalog *c) {
                 continue;
             }
 
-            strncpy(section_name, name, sizeof(section_name) - 1);
-            section_name[sizeof(section_name) - 1] = '\0';
+            size_t sec_len = strlen(name);
+            if (sec_len >= sizeof(section_name)) sec_len = sizeof(section_name) - 1;
+            memcpy(section_name, name, sec_len);
+            section_name[sec_len] = '\0';
             set_default_theme(&current_theme);
             have_section = 1;
             continue;
