@@ -44,12 +44,16 @@ check-deps:
 			missing=1; \
 		fi; \
 	done; \
-	for pc in ncurses libcurl libcjson; do \
+	for pc in ncurses libcurl; do \
 		if ! pkg-config --exists $$pc; then \
 			echo "Missing pkg-config dependency: $$pc"; \
 			missing=1; \
 		fi; \
 	done; \
+	if ! pkg-config --exists libcjson && ! pkg-config --exists cjson; then \
+		echo "Missing pkg-config dependency: libcjson (or cjson)"; \
+		missing=1; \
+	fi; \
 	if [ $$missing -ne 0 ]; then \
 		echo "Dependency check failed."; \
 		exit 1; \

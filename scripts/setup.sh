@@ -96,9 +96,16 @@ validate_environment() {
   done
 
   for pc in ncurses libcurl libcjson; do
-    if ! pkg-config --exists "$pc"; then
-      echo "Missing pkg-config dependency: $pc"
-      missing=1
+    if [ "$pc" = "libcjson" ]; then
+      if ! pkg-config --exists libcjson && ! pkg-config --exists cjson; then
+        echo "Missing pkg-config dependency: libcjson (or cjson)"
+        missing=1
+      fi
+    else
+      if ! pkg-config --exists "$pc"; then
+        echo "Missing pkg-config dependency: $pc"
+        missing=1
+      fi
     fi
   done
 
