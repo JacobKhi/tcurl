@@ -1,5 +1,7 @@
 #include "state.h"
 #include "core/actions.h"
+#include <pthread.h>
+#include "core/request_thread.h"
 
 void dispatch_action(AppState *s, Action a) {
     switch (a) {
@@ -33,6 +35,15 @@ void dispatch_action(AppState *s, Action a) {
         case ACT_TOGGLE_EDITOR_FIELD:
             if (s->focused_panel == PANEL_EDITOR) {
                 s->active_field = (s->active_field == EDIT_FIELD_URL) ? EDIT_FIELD_BODY : EDIT_FIELD_URL;
+            }
+            break;
+
+        case ACT_SEND_REQUEST:
+            if (!s->is_request_in_flight) {
+                s->is_request_in_flight = 1;
+                pthread_t t;
+                pthread_create(&t, NULL, request_thread, s);
+                pthread_detach(t);
             }
             break;
 

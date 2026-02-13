@@ -1,6 +1,5 @@
-#include "core/textbuf.h"
-
 #pragma once
+#include "core/textbuf.h"
 
 #define URL_MAX 1024
 
@@ -24,6 +23,10 @@ typedef enum {
     EDIT_FIELD_BODY = 1
 } EditField;
 
+typedef struct {
+    long status;
+    char *body;
+} HttpResponse;
 
 typedef struct {
     int running;
@@ -40,6 +43,9 @@ typedef struct {
     TextBuffer body;
 
     EditField active_field;
+
+    HttpResponse response;
+    int is_request_in_flight;
 } AppState;
 
 void app_state_init(AppState *s);

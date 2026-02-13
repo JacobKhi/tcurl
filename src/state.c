@@ -1,5 +1,6 @@
 #include "state.h"
 #include <string.h>
+#include <stdlib.h>
 #include "core/textbuf.h"
 
 void app_state_init(AppState *s) {
@@ -14,8 +15,13 @@ void app_state_init(AppState *s) {
 
     tb_init(&s->body);
     s->active_field = EDIT_FIELD_URL;
+
+    s->response.status = 0;
+    s->response.body = NULL;
+    s->is_request_in_flight = 0;
 }
 
 void app_state_destroy(AppState *s) {
     tb_free(&s->body);
+    free(s->response.body);
 }

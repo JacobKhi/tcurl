@@ -7,6 +7,7 @@
 #include "core/keymap.h"
 #include "core/actions.h"
 #include "core/textbuf.h"
+#include <curl/curl.h>
 
 void dispatch_action(AppState *s, Action a);
 
@@ -54,7 +55,7 @@ static void draw_history_content(WINDOW *w, const AppState *state) {
     getmaxyx(w, h, wdt);
     (void)wdt;
 
-    int max_items = h - 2; // inside the box
+    int max_items = h - 2;
     if (max_items <= 0) return;
 
     for (int i = 0; i < max_items; i++) {
@@ -71,6 +72,39 @@ static void draw_history_content(WINDOW *w, const AppState *state) {
 
     wnoutrefresh(w);
 }
+
+static void draw_response_content(WINDOW *w, const AppState *state) {
+    int h, wd;
+    getmaxyx(w, h, wd);
+
+    if (state->is_request_in_flight) {
+        mvwaddnstr(w, 1, 2, "Sending request...", wd - 4);
+        wnoutrefresh(w);
+        return;
+    }
+
+    if (!state->response.body) {
+        mvwaddnstr(w, 1, 2, "No response yet", wd - 4);
+        wnoutrefresh(w);
+        return;
+    }
+
+    char status[64];
+    snprintf(status, sizeof(status), "Status: %ld", state->response.status);
+    mvwaddnstr(w, 1, 2, status, wd - 4);
+
+    int row = 2;
+    const char *p = state->response.body;
+    while (*p && row < h - 1) {
+        mvwaddnstr(w, row++, 2, p, wd - 4);
+        const char *nl = strchr(p, '\n');
+        if (!nl) break;
+        p = nl + 1;
+    }
+
+    wnoutrefresh(w);
+}
+
 
 static void draw_editor_content(WINDOW *w, const AppState *state) {
     int h, wd;
@@ -227,6 +261,7 @@ static void draw_ui(const AppState *state) {
             " Response ",
             state->focused_panel == PANEL_RESPONSE
         );
+        draw_response_content(w_response, state);
 
     }
     
@@ -299,6 +334,7 @@ int main(void) {
     keypad(stdscr, TRUE);
     curs_set(0);
     timeout(100);
+    curl_global_init(CURL_GLOBAL_DEFAULT);
 
     while (state.running) {
         draw_ui(&state);
@@ -317,5 +353,6 @@ int main(void) {
 
     endwin();
     app_state_destroy(&state);
+    curl_global_cleanup();
     return 0;
 }
