@@ -16,6 +16,7 @@ typedef enum {
     ACT_TOGGLE_EDITOR_FIELD,
     ACT_CYCLE_METHOD,
     ACT_HISTORY_LOAD,
+    ACT_HISTORY_REPLAY,
 
     ACT_COUNT
 } Action;

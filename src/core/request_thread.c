@@ -2,6 +2,7 @@
 #include "state.h"
 #include "core/http.h"
 #include "core/history.h"
+#include "core/history_storage.h"
 #include "core/textbuf.h"
 #include "core/format.h"
 #include <stdlib.h>
@@ -60,6 +61,10 @@ void *request_thread(void *arg) {
             &s->headers,
             &s->response
         );
+        history_trim_oldest(s->history, s->history_max_entries);
+        if (s->history_path) {
+            (void)history_storage_save(s->history, s->history_path);
+        }
     }
 
     s->is_request_in_flight = 0;

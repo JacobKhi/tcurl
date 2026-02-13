@@ -68,6 +68,8 @@ typedef struct {
     HttpMethod method;
 
     History *history;
+    int history_max_entries;
+    char *history_path;
 } AppState;
 
 void app_state_init(AppState *s);

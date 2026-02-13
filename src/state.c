@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "core/history.h"
+#include "core/history_storage.h"
 #include "core/textbuf.h"
 
 void app_state_init(AppState *s) {
@@ -31,12 +32,19 @@ void app_state_init(AppState *s) {
     s->response.elapsed_ms = 0.0;
     s->response.error = NULL;
 
+    s->history_max_entries = history_config_load_max_entries("config/history.conf", 500);
+    s->history_path = history_storage_default_path();
+    if (!s->history_path) {
+        s->history_path = strdup("./history.jsonl");
+    }
+
     s->history = malloc(sizeof(*s->history));
     if (s->history) {
         history_init(s->history);
+        (void)history_storage_load(s->history, s->history_path);
+        history_trim_oldest(s->history, s->history_max_entries);
     }
     s->history_selected = 0;
-
 }
 
 void app_state_destroy(AppState *s) {
@@ -52,4 +60,7 @@ void app_state_destroy(AppState *s) {
         free(s->history);
         s->history = NULL;
     }
+
+    free(s->history_path);
+    s->history_path = NULL;
 }

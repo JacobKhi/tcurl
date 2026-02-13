@@ -12,6 +12,15 @@ static char *dup_or_null(const char *s) {
     return s ? strdup(s) : NULL;
 }
 
+static void free_history_item(HistoryItem *it) {
+    if (!it) return;
+    free(it->url);
+    free(it->body);
+    free(it->headers);
+    free(it->response_body);
+    free(it->response_body_view);
+}
+
 void history_init(History *h) {
     if (!h) return;
 
@@ -24,13 +33,7 @@ void history_free(History *h) {
     if (!h) return;
 
     for (int i = 0; i < h->count; i++) {
-        HistoryItem *it = &h->items[i];
-
-        free(it->url);
-        free(it->body);
-        free(it->headers);
-        free(it->response_body);
-        free(it->response_body_view);
+        free_history_item(&h->items[i]);
     }
 
     free(h->items);
@@ -85,4 +88,17 @@ void history_push(
 HistoryItem *history_get(History *h, int index) {
     if (!h || index < 0 || index >= h->count) return NULL;
     return &h->items[index];
+}
+
+void history_trim_oldest(History *h, int max_entries) {
+    if (!h || max_entries < 0) return;
+    if (h->count <= max_entries) return;
+
+    int drop = h->count - max_entries;
+    for (int i = 0; i < drop; i++) {
+        free_history_item(&h->items[i]);
+    }
+
+    memmove(h->items, h->items + drop, (size_t)(h->count - drop) * sizeof(*h->items));
+    h->count -= drop;
 }

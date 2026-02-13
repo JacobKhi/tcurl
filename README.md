@@ -22,7 +22,8 @@ It follows a keyboard-driven workflow inspired by vim while using real HTTP requ
   - payload size
   - JSON indicator
 - JSON pretty-print (fallback to raw text)
-- In-memory request history with load-back into editor/response
+- Persistent request history (JSONL) with load-back into editor/response
+- Replay from history snapshots
 
 ## Dependencies
 
@@ -39,6 +40,7 @@ Notes:
 
 - `pthread` is used and linked, typically provided by the system toolchain on Linux/macOS.
 - Use `make deps` to install dependencies automatically on supported package managers.
+- History is stored at `$HOME/.config/tcurl/history.jsonl`.
 
 ## Quickstart
 
@@ -67,6 +69,18 @@ From `config/keymap.conf`:
 - `m`: cycle HTTP method
 - `r`: send request
 - `enter` (in `History` panel): load selected history item
+- `Shift+Enter` (in `History` panel): replay selected history item
+- `R` (in `History` panel): replay fallback when terminal does not emit `Shift+Enter`
+
+## History Configuration
+
+Persistent history retention is configurable in `config/history.conf`:
+
+```ini
+max_entries = 500
+```
+
+The app keeps only the newest `max_entries` requests.
 
 ## Project Structure
 
@@ -78,7 +92,6 @@ From `config/keymap.conf`:
 
 ## Current Limitations / Roadmap
 
-- History is in-memory only (no persistence yet)
 - `command` and `search` modes exist, but advanced behaviors are still minimal
 - No environment variables templating yet (e.g. `{{BASE_URL}}`)
 - No request export yet (`curl`/JSON)

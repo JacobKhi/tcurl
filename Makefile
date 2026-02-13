@@ -13,6 +13,7 @@ SRC = \
   src/core/dispatch.c \
   src/core/textbuf.c \
   src/core/history.c \
+  src/core/history_storage.c \
   src/core/http.c \
   src/core/request_thread.c \
   src/core/format.c

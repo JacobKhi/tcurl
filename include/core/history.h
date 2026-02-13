@@ -36,3 +36,5 @@ void history_push(
 );
 
 HistoryItem *history_get(History *h, int index);
+
+void history_trim_oldest(History *h, int max_entries);
