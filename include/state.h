@@ -2,6 +2,7 @@
 #include "core/textbuf.h"
 #include "core/env.h"
 #include "core/layout.h"
+#include "core/paths.h"
 
 #define URL_MAX 1024
 #define PROMPT_MAX 256
@@ -71,6 +72,7 @@ typedef struct {
     LayoutTheme ui_theme;
     ThemeCatalog theme_catalog;
     char active_theme_preset[64];
+    AppPaths paths;
 
     int history_selected;
 

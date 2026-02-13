@@ -379,8 +379,9 @@ static void command_apply_theme(AppState *s, const char *preset, int save) {
     ui_draw_init_theme(s);
 
     if (save) {
+        const char *layout_path = s->paths.layout_conf ? s->paths.layout_conf : "config/layout.conf";
         int rc = layout_save_config(
-            "config/layout.conf",
+            layout_path,
             s->ui_layout_profile,
             s->quad_history_slot,
             s->quad_editor_slot,
@@ -392,13 +393,14 @@ static void command_apply_theme(AppState *s, const char *preset, int save) {
 
         char msg[256];
         if (rc == 0) {
-            snprintf(msg, sizeof(msg), "Theme '%s' applied and saved to config/layout.conf", s->active_theme_preset);
+            snprintf(msg, sizeof(msg), "Theme '%s' applied and saved to %s", s->active_theme_preset, layout_path);
         } else {
             snprintf(
                 msg,
                 sizeof(msg),
-                "Theme '%s' applied for this session, but failed to save config/layout.conf",
-                s->active_theme_preset
+                "Theme '%s' applied for this session, but failed to save %s",
+                s->active_theme_preset,
+                layout_path
             );
         }
         response_set_text(s, msg);
@@ -480,11 +482,10 @@ static char *build_help_text(const Keymap *km) {
             char key_name[32];
             if (!key_name_from_code(k, key_name, sizeof(key_name))) continue;
             const char *desc = action_description(a);
-            if (desc && desc[0]) {
-                if (!appendf(&buf, &len, &cap, "  %-8s -> %-20s %s\n", key_name, action_to_string(a), desc)) goto fail;
-            } else {
-                if (!appendf(&buf, &len, &cap, "  %-8s -> %s\n", key_name, action_to_string(a))) goto fail;
+            if (!desc || !desc[0]) {
+                desc = "No description available";
             }
+            if (!appendf(&buf, &len, &cap, "  %-8s -> %s\n", key_name, desc)) goto fail;
         }
         if (!appendf(&buf, &len, &cap, "\n")) goto fail;
     }
