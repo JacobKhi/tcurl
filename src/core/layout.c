@@ -180,7 +180,8 @@ static void set_defaults(
     LayoutSlot *out_editor_slot,
     LayoutSlot *out_response_slot,
     LayoutSizing *out_sizing,
-    LayoutTheme *out_theme
+    LayoutTheme *out_theme,
+    int *out_show_footer_hint
 ) {
     if (out_profile) *out_profile = LAYOUT_PROFILE_CLASSIC;
     if (out_history_slot) *out_history_slot = LAYOUT_SLOT_TL;
@@ -213,10 +214,14 @@ static void set_defaults(
         out_theme->error_fg = COLOR_RED;
         out_theme->error_bg = -1;
     }
+
+    if (out_show_footer_hint) {
+        *out_show_footer_hint = 1;
+    }
 }
 
 static void set_default_theme(LayoutTheme *theme) {
-    set_defaults(NULL, NULL, NULL, NULL, NULL, theme);
+    set_defaults(NULL, NULL, NULL, NULL, NULL, theme, NULL);
 }
 
 static void theme_set_mono(LayoutTheme *theme) {
@@ -256,6 +261,7 @@ int layout_load_config(
     LayoutSlot *out_response_slot,
     LayoutSizing *out_sizing,
     LayoutTheme *out_theme,
+    int *out_show_footer_hint,
     char *out_theme_preset,
     size_t out_theme_preset_size
 ) {
@@ -273,7 +279,8 @@ int layout_load_config(
         out_editor_slot,
         out_response_slot,
         out_sizing,
-        out_theme
+        out_theme,
+        out_show_footer_hint
     );
 
     if (!path) return 0;
@@ -307,6 +314,13 @@ int layout_load_config(
             if (out_theme_preset && out_theme_preset_size > 0) {
                 strncpy(out_theme_preset, val, out_theme_preset_size - 1);
                 out_theme_preset[out_theme_preset_size - 1] = '\0';
+            }
+            continue;
+        }
+
+        if (strcmp(key, "show_footer_hint") == 0) {
+            if (out_show_footer_hint) {
+                (void)parse_bool(val, out_show_footer_hint);
             }
             continue;
         }
@@ -656,6 +670,7 @@ int layout_save_config(
     LayoutSlot response_slot,
     const LayoutSizing *sizing,
     const LayoutTheme *theme,
+    int show_footer_hint,
     const char *theme_preset
 ) {
     if (!path || !sizing || !theme) return 1;
@@ -671,6 +686,9 @@ int layout_save_config(
             "#   focus_editor -> Large editor on top, History/Response split at bottom\n"
             "profile = %s\n"
             "theme_preset = %s\n"
+            "# Footer quick hint in lower-right corner\n"
+            "# true/false, yes/no, on/off, 1/0\n"
+            "show_footer_hint = %s\n"
             "\n"
             "# Used only when profile = quad\n"
             "# tl tr bl br\n"
@@ -706,6 +724,7 @@ int layout_save_config(
             "error_bg = %s\n",
             layout_profile_name(profile),
             (theme_preset && theme_preset[0]) ? theme_preset : "",
+            show_footer_hint ? "true" : "false",
             slot_name(history_slot),
             slot_name(editor_slot),
             slot_name(response_slot),

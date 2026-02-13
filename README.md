@@ -101,8 +101,8 @@ Notes:
 
 From `keymap.conf` in the active config directory:
 
-- `h` / `l`: focus left/right panel
-- `j` / `k`: move down/up (history selection or response scroll)
+- `h` / `l` or `Left` / `Right`: focus left/right panel
+- `j` / `k` or `Up` / `Down`: move down/up (history selection or response scroll)
 - `i`: enter insert mode
 - `esc`: return to normal mode
 - `tab`: cycle editor field (`URL` -> `BODY` -> `HEADERS`)
@@ -113,6 +113,7 @@ From `keymap.conf` in the active config directory:
 - `n`: next search match
 - `N`: previous search match
 - `:`: open command prompt
+- `enter` (in `Editor` panel, normal mode): enter insert mode
 - `enter` (in `History` panel): load selected history item
 - `Shift+Enter` (in `History` panel): replay selected history item
 - `R` (in `History` panel): replay fallback when terminal does not emit `Shift+Enter`
@@ -130,6 +131,7 @@ Command mode:
 
 - `:q` or `:quit`: quit app
 - `:h` or `:help`: print commands + loaded keybindings in `Response` panel
+- Bottom-right quick hint shows `:h`, `:q`, and movement (`h/j/k/l` + arrows)
 - `:theme list`: list available theme presets
 - `:theme <name>`: apply theme preset for current session
 - `:theme <name> -s` or `:theme <name> --save`: apply and persist active preset to active user `layout.conf`
@@ -189,6 +191,7 @@ Layout is loaded at startup from `layout.conf` in the active config directory:
 ```ini
 profile = classic
 theme_preset = vivid
+show_footer_hint = true
 quad_history_slot = tl
 quad_editor_slot = tr
 quad_response_slot = br
@@ -221,6 +224,7 @@ Notes:
 - In `quad`, panel slots must be unique; duplicated slots fall back to defaults.
 - `focus_editor` ignores `quad_*` slot settings.
 - `theme_preset` points to a preset name from `themes.conf` in the active config directory.
+- `show_footer_hint` toggles the lower-right quick help hint (`:h`, `:q`, movement).
 - Percentage controls:
   - `classic_history_width_pct`: `20..70`
   - `classic_editor_height_pct`: `25..75`

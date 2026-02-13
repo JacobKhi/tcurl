@@ -401,6 +401,7 @@ static void command_apply_theme(AppState *s, const char *preset, int save) {
             s->quad_response_slot,
             &s->ui_layout_sizing,
             &s->ui_theme,
+            s->ui_show_footer_hint,
             s->active_theme_preset
         );
 
