@@ -1,6 +1,5 @@
 #include "core/export.h"
-
-#include <cjson/cJSON.h>
+#include "core/cjson_compat.h"
 
 #include <stdarg.h>
 #include <stdio.h>

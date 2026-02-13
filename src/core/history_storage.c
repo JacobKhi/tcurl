@@ -1,9 +1,8 @@
 #include "core/history_storage.h"
 
 #include "state.h"
+#include "core/cjson_compat.h"
 #include "core/textbuf.h"
-
-#include <cjson/cJSON.h>
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>

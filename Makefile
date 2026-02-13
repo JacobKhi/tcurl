@@ -1,6 +1,12 @@
 CC ?= gcc
-CFLAGS ?= -Wall -Wextra -O2 -Iinclude
-LDFLAGS ?= -lncurses -lcurl -lpthread -lcjson
+
+# Package names vary for cJSON across distros/toolchains.
+CJSON_PKG := $(shell if pkg-config --exists libcjson; then echo libcjson; else echo cjson; fi)
+PKG_CFLAGS := $(shell pkg-config --cflags ncurses libcurl $(CJSON_PKG) 2>/dev/null)
+PKG_LIBS := $(shell pkg-config --libs ncurses libcurl $(CJSON_PKG) 2>/dev/null)
+
+CFLAGS ?= -Wall -Wextra -O2 -Iinclude $(PKG_CFLAGS)
+LDFLAGS ?= $(PKG_LIBS) -lpthread
 
 TARGET = tcurl
 SRC = \
@@ -80,7 +86,7 @@ TEST_CORE_SRC = \
   src/core/history.c \
   src/core/history_storage.c \
   src/core/format.c
-TEST_LDFLAGS = -lncurses -lcjson -lpthread
+TEST_LDFLAGS = $(PKG_LIBS) -lpthread
 
 $(TEST_TARGET): $(TEST_SRC) $(TEST_CORE_SRC)
 	$(CC) $(CFLAGS) -o $(TEST_TARGET) $(TEST_SRC) $(TEST_CORE_SRC) $(TEST_LDFLAGS)
