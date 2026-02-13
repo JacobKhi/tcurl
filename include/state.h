@@ -73,6 +73,7 @@ typedef struct {
     LayoutSlot quad_response_slot;
     LayoutSizing ui_layout_sizing;
     LayoutTheme ui_theme;
+    int ui_show_footer_hint;
     ThemeCatalog theme_catalog;
     char active_theme_preset[64];
     AppPaths paths;

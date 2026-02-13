@@ -49,6 +49,10 @@ static int keycode_from_token(char *tok) {
     if (strcmp(tok, "tab") == 0) return 9;
     if (strcmp(tok, "enter") == 0) return KEY_ENTER;
     if (strcmp(tok, "s-enter") == 0) return KEY_SENTER;
+    if (strcmp(tok, "left") == 0) return KEY_LEFT;
+    if (strcmp(tok, "right") == 0) return KEY_RIGHT;
+    if (strcmp(tok, "up") == 0) return KEY_UP;
+    if (strcmp(tok, "down") == 0) return KEY_DOWN;
 
     if (strlen(tok) == 1) return (unsigned char)tok[0];
 
@@ -127,6 +131,24 @@ Action keymap_resolve(const Keymap *km, Mode mode, int keycode) {
         if (a != ACT_NONE) return a;
         a = km->table[mode]['\r'];
         if (a != ACT_NONE) return a;
+    }
+
+    /* Backward-compatible vim-parallel navigation for old keymap files:
+       if arrows are not explicitly bound, mirror h/j/k/l bindings in normal mode. */
+    if (mode == MODE_NORMAL) {
+        if (keycode == KEY_LEFT) {
+            a = km->table[mode]['h'];
+            if (a != ACT_NONE) return a;
+        } else if (keycode == KEY_RIGHT) {
+            a = km->table[mode]['l'];
+            if (a != ACT_NONE) return a;
+        } else if (keycode == KEY_DOWN) {
+            a = km->table[mode]['j'];
+            if (a != ACT_NONE) return a;
+        } else if (keycode == KEY_UP) {
+            a = km->table[mode]['k'];
+            if (a != ACT_NONE) return a;
+        }
     }
 
     return ACT_NONE;

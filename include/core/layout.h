@@ -61,6 +61,7 @@ int layout_load_config(
     LayoutSlot *out_response_slot,
     LayoutSizing *out_sizing,
     LayoutTheme *out_theme,
+    int *out_show_footer_hint,
     char *out_theme_preset,
     size_t out_theme_preset_size
 );
@@ -83,5 +84,6 @@ int layout_save_config(
     LayoutSlot response_slot,
     const LayoutSizing *sizing,
     const LayoutTheme *theme,
+    int show_footer_hint,
     const char *theme_preset
 );

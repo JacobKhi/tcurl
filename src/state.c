@@ -45,6 +45,7 @@ void app_state_init(AppState *s) {
         &s->quad_response_slot,
         &s->ui_layout_sizing,
         &s->ui_theme,
+        &s->ui_show_footer_hint,
         s->active_theme_preset,
         sizeof(s->active_theme_preset)
     );

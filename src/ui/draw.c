@@ -798,7 +798,10 @@ void ui_draw(AppState *state) {
         mvaddnstr(rows - 1, 2, prompt, cols - 4);
     } else {
         char status[512];
+        int status_warn = 0;
         const char *env_name = env_store_active_name(&state->envs);
+        int status_x = 2;
+        int status_limit_x = cols - 2;
 
         if (state->search_not_found && state->search_query[0] != '\0') {
             snprintf(
@@ -812,9 +815,7 @@ void ui_draw(AppState *state) {
                 state->history_skipped_invalid,
                 state->search_query
             );
-            if (g_theme_colors) attron(COLOR_PAIR(PAIR_WARN) | A_BOLD);
-            mvaddnstr(rows - 1, 2, status, cols - 4);
-            if (g_theme_colors) attroff(COLOR_PAIR(PAIR_WARN) | A_BOLD);
+            status_warn = 1;
         } else {
             snprintf(
                 status,
@@ -827,7 +828,30 @@ void ui_draw(AppState *state) {
                 state->history_skipped_invalid,
                 state->history_last_save_error
             );
-            mvaddnstr(rows - 1, 2, status, cols - 4);
+        }
+
+        if (state->ui_show_footer_hint && cols > 20) {
+            const char *hint = ":h help  :q quit  Move: h/j/k/l or arrows";
+            int hint_len = (int)strlen(hint);
+            int max_hint_len = cols - 8;
+            if (hint_len > max_hint_len) hint_len = max_hint_len;
+
+            int hint_x = (cols - 2) - hint_len;
+            int sep_x = hint_x - 3;
+            if (sep_x > status_x + 10) {
+                status_limit_x = sep_x;
+                mvaddnstr(rows - 1, sep_x, " | ", cols - sep_x - 2);
+                attron(A_DIM);
+                mvaddnstr(rows - 1, hint_x, hint, hint_len);
+                attroff(A_DIM);
+            }
+        }
+
+        if (status_x < status_limit_x) {
+            int status_space = status_limit_x - status_x;
+            if (status_warn && g_theme_colors) attron(COLOR_PAIR(PAIR_WARN) | A_BOLD);
+            mvaddnstr(rows - 1, status_x, status, status_space);
+            if (status_warn && g_theme_colors) attroff(COLOR_PAIR(PAIR_WARN) | A_BOLD);
         }
     }
 
