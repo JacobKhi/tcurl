@@ -175,7 +175,13 @@ static void draw_response_content(WINDOW *w, const AppState *state) {
 }
 
 
-static void draw_editor_content(WINDOW *w, const AppState *state) {
+static int clamp_int(int v, int lo, int hi) {
+    if (v < lo) return lo;
+    if (v > hi) return hi;
+    return v;
+}
+
+static void draw_editor_content(WINDOW *w, AppState *state) {
     int h, wd;
     getmaxyx(w, h, wd);
 
@@ -229,14 +235,79 @@ static void draw_editor_content(WINDOW *w, const AppState *state) {
     if (body_clip < 0) body_clip = 0;
     int headers_clip = headers_right - headers_left + 1;
     if (headers_clip < 0) headers_clip = 0;
+
+    int body_gutter = body_clip >= 8 ? 4 : 0;
+    int headers_gutter = headers_clip >= 8 ? 4 : 0;
+
+    int body_text_left = body_left + body_gutter;
+    int headers_text_left = headers_left + headers_gutter;
+    int body_text_clip = body_right - body_text_left + 1;
+    int headers_text_clip = headers_right - headers_text_left + 1;
+    if (body_text_clip < 0) body_text_clip = 0;
+    if (headers_text_clip < 0) headers_text_clip = 0;
+
     int visible_lines = content_last_row - content_first_row + 1;
+    if (visible_lines <= 0) {
+        wnoutrefresh(w);
+        return;
+    }
+
+    int max_body_scroll = state->body.line_count - visible_lines;
+    if (max_body_scroll < 0) max_body_scroll = 0;
+    int max_headers_scroll = state->headers.line_count - visible_lines;
+    if (max_headers_scroll < 0) max_headers_scroll = 0;
+
+    if (state->active_field == EDIT_FIELD_BODY) {
+        if (state->body.cursor_row < state->body_scroll) {
+            state->body_scroll = state->body.cursor_row;
+        }
+        if (state->body.cursor_row >= state->body_scroll + visible_lines) {
+            state->body_scroll = state->body.cursor_row - visible_lines + 1;
+        }
+    } else if (state->active_field == EDIT_FIELD_HEADERS) {
+        if (state->headers.cursor_row < state->headers_scroll) {
+            state->headers_scroll = state->headers.cursor_row;
+        }
+        if (state->headers.cursor_row >= state->headers_scroll + visible_lines) {
+            state->headers_scroll = state->headers.cursor_row - visible_lines + 1;
+        }
+    }
+
+    state->body_scroll = clamp_int(state->body_scroll, 0, max_body_scroll);
+    state->headers_scroll = clamp_int(state->headers_scroll, 0, max_headers_scroll);
 
     for (int i = 0; i < visible_lines; i++) {
-        if (i < state->body.line_count) {
-            mvwaddnstr(w, content_first_row + i, body_left, state->body.lines[i], body_clip);
+        int row_y = content_first_row + i;
+        int body_row = state->body_scroll + i;
+        int headers_row = state->headers_scroll + i;
+
+        if (state->active_field == EDIT_FIELD_BODY && body_row == state->body.cursor_row) {
+            wattron(w, A_REVERSE);
+            mvwhline(w, row_y, body_left, ' ', body_clip);
+            wattroff(w, A_REVERSE);
         }
-        if (i < state->headers.line_count) {
-            mvwaddnstr(w, content_first_row + i, headers_left, state->headers.lines[i], headers_clip);
+        if (state->active_field == EDIT_FIELD_HEADERS && headers_row == state->headers.cursor_row) {
+            wattron(w, A_REVERSE);
+            mvwhline(w, row_y, headers_left, ' ', headers_clip);
+            wattroff(w, A_REVERSE);
+        }
+
+        if (body_gutter > 0 && body_row < state->body.line_count) {
+            char ln[16];
+            snprintf(ln, sizeof(ln), "%3d ", body_row + 1);
+            mvwaddnstr(w, row_y, body_left, ln, body_gutter);
+        }
+        if (headers_gutter > 0 && headers_row < state->headers.line_count) {
+            char ln[16];
+            snprintf(ln, sizeof(ln), "%3d ", headers_row + 1);
+            mvwaddnstr(w, row_y, headers_left, ln, headers_gutter);
+        }
+
+        if (body_row < state->body.line_count) {
+            mvwaddnstr(w, row_y, body_text_left, state->body.lines[body_row], body_text_clip);
+        }
+        if (headers_row < state->headers.line_count) {
+            mvwaddnstr(w, row_y, headers_text_left, state->headers.lines[headers_row], headers_text_clip);
         }
     }
 
@@ -252,22 +323,22 @@ static void draw_editor_content(WINDOW *w, const AppState *state) {
             wmove(w, cy, cx);
             curs_set(1);
         } else if (state->active_field == EDIT_FIELD_BODY) {
-            int cy = content_first_row + state->body.cursor_row;
-            int cx = body_left + state->body.cursor_col;
+            int cy = content_first_row + (state->body.cursor_row - state->body_scroll);
+            int cx = body_text_left + state->body.cursor_col;
 
             if (cy >= content_first_row && cy <= content_last_row) {
-                if (cx < body_left) cx = body_left;
+                if (cx < body_text_left) cx = body_text_left;
                 if (cx > body_right) cx = body_right;
 
                 wmove(w, cy, cx);
                 curs_set(1);
             }
         } else {
-            int cy = content_first_row + state->headers.cursor_row;
-            int cx = headers_left + state->headers.cursor_col;
+            int cy = content_first_row + (state->headers.cursor_row - state->headers_scroll);
+            int cx = headers_text_left + state->headers.cursor_col;
 
             if (cy >= content_first_row && cy <= content_last_row) {
-                if (cx < headers_left) cx = headers_left;
+                if (cx < headers_text_left) cx = headers_text_left;
                 if (cx > headers_right) cx = headers_right;
 
                 wmove(w, cy, cx);
@@ -279,7 +350,7 @@ static void draw_editor_content(WINDOW *w, const AppState *state) {
     wnoutrefresh(w);
 }               
 
-void ui_draw(const AppState *state) {
+void ui_draw(AppState *state) {
     static WINDOW *w_history  = NULL;
     static WINDOW *w_editor   = NULL;
     static WINDOW *w_response = NULL;
@@ -335,14 +406,30 @@ void ui_draw(const AppState *state) {
     mvaddnstr(0, 2, top, cols - 4);
 
 
-    char status[256];
-    const char *env_name = env_store_active_name(&state->envs);
-    snprintf(status, sizeof(status), " %s | focus=%s | env=%s | history_selected=%d ",
-             mode_label(state->mode),
-             panel_label(state->focused_panel),
-             env_name ? env_name : "none",
-             state->history_selected);
-    mvaddnstr(rows - 1, 2, status, cols - 4);
+    if (state->mode == MODE_COMMAND || state->mode == MODE_SEARCH) {
+        char prompt[512];
+        char prefix = state->mode == MODE_COMMAND ? ':' : '/';
+        snprintf(prompt, sizeof(prompt), " %c%s", prefix, state->prompt_input);
+        mvaddnstr(rows - 1, 2, prompt, cols - 4);
+    } else {
+        char status[512];
+        const char *env_name = env_store_active_name(&state->envs);
+        if (state->search_not_found && state->search_query[0] != '\0') {
+            snprintf(status, sizeof(status), " %s | focus=%s | env=%s | history_selected=%d | not found: %s ",
+                     mode_label(state->mode),
+                     panel_label(state->focused_panel),
+                     env_name ? env_name : "none",
+                     state->history_selected,
+                     state->search_query);
+        } else {
+            snprintf(status, sizeof(status), " %s | focus=%s | env=%s | history_selected=%d ",
+                     mode_label(state->mode),
+                     panel_label(state->focused_panel),
+                     env_name ? env_name : "none",
+                     state->history_selected);
+        }
+        mvaddnstr(rows - 1, 2, status, cols - 4);
+    }
 
     wnoutrefresh(stdscr);
 
@@ -370,7 +457,13 @@ void ui_draw(const AppState *state) {
         draw_response_content(w_response, state);
 
     }
-    
+    if (state->mode == MODE_COMMAND || state->mode == MODE_SEARCH) {
+        int cx = 4 + state->prompt_cursor;
+        if (cx < 2) cx = 2;
+        if (cx > cols - 2) cx = cols - 2;
+        move(rows - 1, cx);
+        curs_set(1);
+    }
 
     doupdate();
 }

@@ -22,6 +22,8 @@ static const ActionEntry ACTIONS[] = {
     {"cycle_environment", ACT_CYCLE_ENVIRONMENT},
     {"history_load", ACT_HISTORY_LOAD},
     {"history_replay", ACT_HISTORY_REPLAY},
+    {"search_next", ACT_SEARCH_NEXT},
+    {"search_prev", ACT_SEARCH_PREV},
 };
 
 Action action_from_string(const char *name) {

@@ -18,6 +18,8 @@ typedef enum {
     ACT_CYCLE_ENVIRONMENT,
     ACT_HISTORY_LOAD,
     ACT_HISTORY_REPLAY,
+    ACT_SEARCH_NEXT,
+    ACT_SEARCH_PREV,
 
     ACT_COUNT
 } Action;

@@ -7,6 +7,28 @@
 #include "core/actions.h"
 #include "core/dispatch.h"
 
+static void insert_tab_in_url(AppState *s) {
+    const int tab_spaces = 4;
+    if (!s) return;
+    if (s->url_len >= URL_MAX - 1) return;
+
+    int can_insert = URL_MAX - 1 - s->url_len;
+    int n = tab_spaces;
+    if (n > can_insert) n = can_insert;
+    if (n <= 0) return;
+
+    memmove(
+        &s->url[s->url_cursor + n],
+        &s->url[s->url_cursor],
+        (size_t)(s->url_len - s->url_cursor + 1)
+    );
+    for (int i = 0; i < n; i++) {
+        s->url[s->url_cursor + i] = ' ';
+    }
+    s->url_cursor += n;
+    s->url_len += n;
+}
+
 static void handle_url_insert(AppState *s, int ch) {
     if (ch == KEY_BACKSPACE || ch == 127 || ch == 8) {
         if (s->url_cursor > 0 && s->url_len > 0) {
@@ -23,6 +45,10 @@ static void handle_url_insert(AppState *s, int ch) {
     if (ch == KEY_RIGHT) { if (s->url_cursor < s->url_len) s->url_cursor++; return; }
 
     if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) return;
+    if (ch == '\t' || ch == 9) {
+        insert_tab_in_url(s);
+        return;
+    }
 
     if (ch >= 32 && ch <= 126) {
         if (s->url_len >= URL_MAX - 1) return;
@@ -43,6 +69,13 @@ static void handle_textbuf_insert(TextBuffer *tb, int ch) {
     if (ch == KEY_UP)    { tb_move_up(tb); return; }
     if (ch == KEY_DOWN)  { tb_move_down(tb); return; }
     if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) { tb_newline(tb); return; }
+    if (ch == '\t' || ch == 9) {
+        tb_insert_char(tb, ' ');
+        tb_insert_char(tb, ' ');
+        tb_insert_char(tb, ' ');
+        tb_insert_char(tb, ' ');
+        return;
+    }
 
     tb_insert_char(tb, ch);
 }
@@ -152,13 +185,93 @@ static void editor_handle_insert_key(AppState *s, int ch) {
         return;
     }
 
-    if (ch == '\t' || ch == 9) {
+    if (ch == KEY_BTAB) {
         headers_autocomplete(s);
         return;
     }
 
     reset_headers_autocomplete(s);
     handle_textbuf_insert(&s->headers, ch);
+}
+
+static void prompt_insert_char(AppState *s, int ch) {
+    if (!s) return;
+
+    if (ch >= 32 && ch <= 126) {
+        if (s->prompt_len >= PROMPT_MAX - 1) return;
+
+        memmove(
+            &s->prompt_input[s->prompt_cursor + 1],
+            &s->prompt_input[s->prompt_cursor],
+            (size_t)(s->prompt_len - s->prompt_cursor + 1)
+        );
+        s->prompt_input[s->prompt_cursor] = (char)ch;
+        s->prompt_cursor++;
+        s->prompt_len++;
+    }
+}
+
+static void prompt_backspace(AppState *s) {
+    if (!s || s->prompt_cursor <= 0 || s->prompt_len <= 0) return;
+
+    memmove(
+        &s->prompt_input[s->prompt_cursor - 1],
+        &s->prompt_input[s->prompt_cursor],
+        (size_t)(s->prompt_len - s->prompt_cursor + 1)
+    );
+    s->prompt_cursor--;
+    s->prompt_len--;
+}
+
+static void handle_command_mode_key(AppState *s, Keymap *km, int ch) {
+    if (ch == KEY_BACKSPACE || ch == 127 || ch == 8) {
+        prompt_backspace(s);
+        return;
+    }
+
+    if (ch == KEY_LEFT) {
+        if (s->prompt_cursor > 0) s->prompt_cursor--;
+        return;
+    }
+    if (ch == KEY_RIGHT) {
+        if (s->prompt_cursor < s->prompt_len) s->prompt_cursor++;
+        return;
+    }
+
+    if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+        dispatch_execute_command(s, km, s->prompt_input);
+        return;
+    }
+
+    prompt_insert_char(s, ch);
+}
+
+static void handle_search_mode_key(AppState *s, int ch) {
+    if (ch == KEY_BACKSPACE || ch == 127 || ch == 8) {
+        prompt_backspace(s);
+        return;
+    }
+
+    if (ch == KEY_LEFT) {
+        if (s->prompt_cursor > 0) s->prompt_cursor--;
+        return;
+    }
+    if (ch == KEY_RIGHT) {
+        if (s->prompt_cursor < s->prompt_len) s->prompt_cursor++;
+        return;
+    }
+
+    if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+        dispatch_apply_search(s, s->prompt_input);
+        s->mode = MODE_NORMAL;
+        s->prompt_kind = PROMPT_NONE;
+        s->prompt_input[0] = '\0';
+        s->prompt_len = 0;
+        s->prompt_cursor = 0;
+        return;
+    }
+
+    prompt_insert_char(s, ch);
 }
 
 void ui_handle_key(AppState *state, Keymap *keymap, int ch) {
@@ -171,5 +284,15 @@ void ui_handle_key(AppState *state, Keymap *keymap, int ch) {
 
     if (state->mode == MODE_INSERT) {
         editor_handle_insert_key(state, ch);
+        return;
+    }
+
+    if (state->mode == MODE_COMMAND) {
+        handle_command_mode_key(state, keymap, ch);
+        return;
+    }
+
+    if (state->mode == MODE_SEARCH) {
+        handle_search_mode_key(state, ch);
     }
 }

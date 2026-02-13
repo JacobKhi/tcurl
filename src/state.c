@@ -61,6 +61,19 @@ void app_state_init(AppState *s) {
     s->headers_ac_row = -1;
     s->headers_ac_next_match = 0;
     s->headers_ac_seed = NULL;
+
+    s->prompt_kind = PROMPT_NONE;
+    memset(s->prompt_input, 0, sizeof(s->prompt_input));
+    s->prompt_len = 0;
+    s->prompt_cursor = 0;
+
+    memset(s->search_query, 0, sizeof(s->search_query));
+    s->search_target = SEARCH_TARGET_HISTORY;
+    s->search_match_index = -1;
+    s->search_not_found = 0;
+
+    s->body_scroll = 0;
+    s->headers_scroll = 0;
 }
 
 void app_state_destroy(AppState *s) {
@@ -89,4 +102,12 @@ void app_state_destroy(AppState *s) {
     s->headers_ac_seed = NULL;
     s->headers_ac_row = -1;
     s->headers_ac_next_match = 0;
+
+    s->prompt_kind = PROMPT_NONE;
+    s->prompt_len = 0;
+    s->prompt_cursor = 0;
+    s->search_match_index = -1;
+    s->search_not_found = 0;
+    s->body_scroll = 0;
+    s->headers_scroll = 0;
 }

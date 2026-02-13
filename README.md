@@ -10,6 +10,7 @@ It follows a keyboard-driven workflow inspired by vim while using real HTTP requ
   - `Editor` (top-right)
   - `Response` (bottom-right)
 - Mode-based keyboard workflow (`normal`, `insert`, `command`, `search`)
+- Vim-like command line (`:`) and search (`/`) in the bottom bar
 - Request editing:
   - URL field
   - dedicated BODY + HEADERS split editor
@@ -28,6 +29,7 @@ It follows a keyboard-driven workflow inspired by vim while using real HTTP requ
 - JSON pretty-print (fallback to raw text)
 - Persistent request history (JSONL) with load-back into editor/response
 - Replay from history snapshots
+- Contextual search with next/prev navigation (`n` / `N`)
 
 ## Dependencies
 
@@ -64,7 +66,6 @@ make check-deps
 
 From `config/keymap.conf`:
 
-- `q`: quit
 - `h` / `l`: focus left/right panel
 - `j` / `k`: move down/up (history selection or response scroll)
 - `i`: enter insert mode
@@ -73,10 +74,27 @@ From `config/keymap.conf`:
 - `m`: cycle HTTP method
 - `E`: cycle active environment (`dev` -> `prod` -> ...)
 - `r`: send request
+- `/`: open search prompt (searches History or Response based on focus)
+- `n`: next search match
+- `N`: previous search match
+- `:`: open command prompt
 - `enter` (in `History` panel): load selected history item
 - `Shift+Enter` (in `History` panel): replay selected history item
 - `R` (in `History` panel): replay fallback when terminal does not emit `Shift+Enter`
-- `tab` (while editing HEADERS in insert mode): autocomplete header name
+- `tab` (in insert mode): insert indentation (4 spaces)
+- `Shift+Tab` (while editing HEADERS in insert mode): autocomplete header name
+
+Search behavior:
+
+- Focus `History`: `/` searches history entries (`METHOD URL`)
+- Focus `Response`: `/` searches response body
+- Focus `Editor`: `/` searches response body
+- `n` / `N` wrap around matches
+
+Command mode:
+
+- `:q` or `:quit`: quit app
+- `:h` or `:help`: print commands + loaded keybindings in `Response` panel
 
 ## History Configuration
 
@@ -116,7 +134,14 @@ If a template variable is missing in the active environment, request execution f
 ## Header Autocomplete
 
 Header suggestions come from `config/headers.txt` (one header per line, `#` comments allowed).
-In insert mode with HEADERS active, press `tab` to complete/cycle matching header names.
+In insert mode with HEADERS active, press `Shift+Tab` to complete/cycle matching header names.
+
+## Typing Area Improvements
+
+- Dedicated split editor with BODY and HEADERS side by side
+- Active editing line highlight
+- Line number gutter in BODY and HEADERS
+- Vertical scrolling that follows cursor position for long content
 
 ## Project Structure
 

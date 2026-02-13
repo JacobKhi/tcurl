@@ -3,6 +3,7 @@
 #include "core/env.h"
 
 #define URL_MAX 1024
+#define PROMPT_MAX 256
 
 typedef enum {
     MODE_NORMAL = 0,
@@ -24,6 +25,17 @@ typedef enum {
     EDIT_FIELD_BODY = 1,
     EDIT_FIELD_HEADERS = 2
 } EditField;
+
+typedef enum {
+    SEARCH_TARGET_HISTORY = 0,
+    SEARCH_TARGET_RESPONSE = 1
+} SearchTarget;
+
+typedef enum {
+    PROMPT_NONE = 0,
+    PROMPT_COMMAND = 1,
+    PROMPT_SEARCH = 2
+} PromptKind;
 
 typedef struct HttpResponse {
     long status;
@@ -79,6 +91,19 @@ typedef struct {
     int headers_ac_row;
     int headers_ac_next_match;
     char *headers_ac_seed;
+
+    PromptKind prompt_kind;
+    char prompt_input[PROMPT_MAX];
+    int prompt_len;
+    int prompt_cursor;
+
+    char search_query[PROMPT_MAX];
+    SearchTarget search_target;
+    int search_match_index;
+    int search_not_found;
+
+    int body_scroll;
+    int headers_scroll;
 } AppState;
 
 void app_state_init(AppState *s);
