@@ -1,3 +1,5 @@
+#include "core/textbuf.h"
+
 #pragma once
 
 #define URL_MAX 1024
@@ -17,6 +19,12 @@ typedef enum {
     PANEL_COUNT
 } Panel;
 
+typedef enum {
+    EDIT_FIELD_URL = 0,
+    EDIT_FIELD_BODY = 1
+} EditField;
+
+
 typedef struct {
     int running;
     Mode mode;
@@ -28,6 +36,12 @@ typedef struct {
     char url[URL_MAX];
     int url_len;
     int url_cursor;
+
+    TextBuffer body;
+
+    EditField active_field;
 } AppState;
 
 void app_state_init(AppState *s);
+
+void app_state_destroy(AppState *s);

@@ -13,6 +13,7 @@ typedef enum {
     ACT_ENTER_COMMAND,
     ACT_ENTER_SEARCH,
     ACT_SEND_REQUEST,
+    ACT_TOGGLE_EDITOR_FIELD,
 
     ACT_COUNT
 } Action;

@@ -41,6 +41,7 @@ static int keycode_from_token(char *tok) {
     }
 
     if (strcmp(tok, "esc") == 0) return 27;
+    if (strcmp(tok, "tab") == 0) return 9;
 
     if (strlen(tok) == 1) return (unsigned char)tok[0];
 

@@ -6,6 +6,7 @@
 #include "state.h"
 #include "core/keymap.h"
 #include "core/actions.h"
+#include "core/textbuf.h"
 
 void dispatch_action(AppState *s, Action a);
 
@@ -75,28 +76,73 @@ static void draw_editor_content(WINDOW *w, const AppState *state) {
     int h, wd;
     getmaxyx(w, h, wd);
 
-    (void)h;
+    // Layout (inside the window box):
+    // row 1: URL label
+    // row 2: URL value
+    // row 3: BODY label
+    // row 4: BODY lines
+    const int url_label_row = 1;
+    const int url_value_row = 2;
+    const int body_label_row = 3;
+    const int body_first_row = 4;
 
-    mvwaddnstr(w, 1, 2, "URL:", wd - 4);
-    // draw url (clipped)
-    mvwaddnstr(w, 2, 2, state->url, wd - 4);
+    // URL label (highlight if active)
+    if (state->active_field == EDIT_FIELD_URL) wattron(w, A_REVERSE);
+    mvwaddnstr(w, url_label_row, 2, "URL:", wd - 4);
+    if (state->active_field == EDIT_FIELD_URL) wattroff(w, A_REVERSE);
 
-    // show cursor only in insert mode and when editor focused
+    // URL value (clip to available width)
+    int url_max = wd - 4;
+    if (url_max < 0) url_max = 0;
+    mvwaddnstr(w, url_value_row, 2, state->url, url_max);
+
+    // BODY label (highlight if active)
+    if (state->active_field == EDIT_FIELD_BODY) wattron(w, A_REVERSE);
+    mvwaddnstr(w, body_label_row, 2, "BODY:", wd - 4);
+    if (state->active_field == EDIT_FIELD_BODY) wattroff(w, A_REVERSE);
+
+    // BODY lines (clip each line)
+    int body_visible_lines = h - 1 - body_first_row; // last usable row is h-2 (since border)
+    if (body_visible_lines < 0) body_visible_lines = 0;
+
+    int line_clip = wd - 4;
+    if (line_clip < 0) line_clip = 0;
+
+    for (int i = 0; i < body_visible_lines; i++) {
+        int row = i;
+        if (row >= state->body.line_count) break;
+
+        mvwaddnstr(w, body_first_row + i, 2, state->body.lines[row], line_clip);
+    }
+
+    // Cursor handling
+    curs_set(0);
     if (state->mode == MODE_INSERT && state->focused_panel == PANEL_EDITOR) {
-        // cursor row 2, col 2 + url_cursor
-        int cx = 2 + state->url_cursor;
-        int cy = 2;
+        if (state->active_field == EDIT_FIELD_URL) {
+            int cy = url_value_row;
+            int cx = 2 + state->url_cursor;
 
-        // clamp inside window
-        if (cx < wd - 1) {
+            if (cx < 2) cx = 2;
+            if (cx > wd - 2) cx = wd - 2;
+
             wmove(w, cy, cx);
             curs_set(1);
         } else {
-            curs_set(0);
+            int cy = body_first_row + state->body.cursor_row;
+            int cx = 2 + state->body.cursor_col;
+
+            if (cy >= body_first_row && cy <= h - 2) {
+                if (cx < 2) cx = 2;
+                if (cx > wd - 2) cx = wd - 2;
+
+                wmove(w, cy, cx);
+                curs_set(1);
+            }
         }
     }
+
     wnoutrefresh(w);
-}
+}               
 
 static void draw_ui(const AppState *state) {
     static WINDOW *w_history  = NULL;
@@ -171,7 +217,7 @@ static void draw_ui(const AppState *state) {
 
         draw_boxed_window(
             w_editor,
-            " Editor ",
+            state->active_field == EDIT_FIELD_URL ? " Editor [URL] " : " Editor [BODY] ",
             state->focused_panel == PANEL_EDITOR
         );
         draw_editor_content(w_editor, state);
@@ -189,41 +235,52 @@ static void draw_ui(const AppState *state) {
 }
 
 static void editor_handle_insert_key(AppState *s, int ch) {
-    // Backspace (varia por terminal)
-    if (ch == KEY_BACKSPACE || ch == 127 || ch == 8) {
-        if (s->url_cursor > 0 && s->url_len > 0) {
-            // remove char before cursor
-            memmove(&s->url[s->url_cursor - 1],
+    if (s->active_field == EDIT_FIELD_URL) {
+        if (ch == KEY_BACKSPACE || ch == 127 || ch == 8) {
+            if (s->url_cursor > 0 && s->url_len > 0) {
+                memmove(&s->url[s->url_cursor - 1],
+                        &s->url[s->url_cursor],
+                        (size_t)(s->url_len - s->url_cursor + 1)); // includes '\0'
+                s->url_cursor--;
+                s->url_len--;
+            }
+            return;
+        }
+
+        if (ch == KEY_LEFT) {
+            if (s->url_cursor > 0) s->url_cursor--;
+            return;
+        }
+
+        if (ch == KEY_RIGHT) {
+            if (s->url_cursor < s->url_len) s->url_cursor++;
+            return;
+        }
+
+        if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) return;
+
+        if (ch >= 32 && ch <= 126) {
+            if (s->url_len >= URL_MAX - 1) return;
+
+            memmove(&s->url[s->url_cursor + 1],
                     &s->url[s->url_cursor],
-                    (size_t)(s->url_len - s->url_cursor + 1)); // +1 includes '\0'
-            s->url_cursor--;
-            s->url_len--;
+                    (size_t)(s->url_len - s->url_cursor + 1)); // shift incl '\0'
+            s->url[s->url_cursor] = (char)ch;
+            s->url_cursor++;
+            s->url_len++;
         }
         return;
     }
 
-    // Left/Right arrows
-    if (ch == KEY_LEFT) {
-        if (s->url_cursor > 0) s->url_cursor--;
-        return;
-    }
-    if (ch == KEY_RIGHT) {
-        if (s->url_cursor < s->url_len) s->url_cursor++;
-        return;
-    }
+    // BODY field (multi-line)
+    if (ch == KEY_BACKSPACE || ch == 127 || ch == 8) { tb_backspace(&s->body); return; }
+    if (ch == KEY_LEFT)  { tb_move_left(&s->body); return; }
+    if (ch == KEY_RIGHT) { tb_move_right(&s->body); return; }
+    if (ch == KEY_UP)    { tb_move_up(&s->body); return; }
+    if (ch == KEY_DOWN)  { tb_move_down(&s->body); return; }
+    if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) { tb_newline(&s->body); return; }
 
-    // Printable ASCII (keep it simple for MVP)
-    if (ch >= 32 && ch <= 126) {
-        if (s->url_len >= URL_MAX - 1) return;
-
-        // insert at cursor
-        memmove(&s->url[s->url_cursor + 1],
-                &s->url[s->url_cursor],
-                (size_t)(s->url_len - s->url_cursor + 1)); // shift incl '\0'
-        s->url[s->url_cursor] = (char)ch;
-        s->url_cursor++;
-        s->url_len++;
-    }
+    tb_insert_char(&s->body, ch);
 }
 
 int main(void) {
@@ -259,5 +316,6 @@ int main(void) {
     }
 
     endwin();
+    app_state_destroy(&state);
     return 0;
 }

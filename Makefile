@@ -8,7 +8,8 @@ SRC = \
   src/state.c \
   src/core/actions.c \
   src/core/keymap.c \
-  src/core/dispatch.c
+  src/core/dispatch.c \
+  src/core/textbuf.c
 
 all: $(TARGET)
 
