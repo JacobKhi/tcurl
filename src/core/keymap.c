@@ -76,8 +76,10 @@ int keymap_load_file(Keymap *km, const char *path) {
             char *end = strchr(line, ']');
             if (!end) continue;
             *end = '\0';
-            strncpy(section, line + 1, sizeof(section) - 1);
-            section[sizeof(section) - 1] = '\0';
+            size_t sec_len = strlen(line + 1);
+            if (sec_len >= sizeof(section)) sec_len = sizeof(section) - 1;
+            memcpy(section, line + 1, sec_len);
+            section[sec_len] = '\0';
             trim(section);
             current_mode = mode_from_section(section);
             continue;
