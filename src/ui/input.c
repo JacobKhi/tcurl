@@ -1,4 +1,7 @@
 #include <ncurses.h>
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "ui/input.h"
 #include "core/actions.h"
@@ -44,17 +47,117 @@ static void handle_textbuf_insert(TextBuffer *tb, int ch) {
     tb_insert_char(tb, ch);
 }
 
+static void reset_headers_autocomplete(AppState *s) {
+    s->headers_ac_row = -1;
+    s->headers_ac_next_match = 0;
+    free(s->headers_ac_seed);
+    s->headers_ac_seed = NULL;
+}
+
+static int starts_with_ci(const char *s, const char *prefix) {
+    if (!s || !prefix) return 0;
+
+    for (int i = 0; prefix[i]; i++) {
+        if (!s[i]) return 0;
+        if (tolower((unsigned char)s[i]) != tolower((unsigned char)prefix[i])) return 0;
+    }
+    return 1;
+}
+
+static char *current_header_prefix(const TextBuffer *tb) {
+    if (!tb || tb->cursor_row < 0 || tb->cursor_row >= tb->line_count) return NULL;
+
+    const char *line = tb->lines[tb->cursor_row];
+    if (!line) return strdup("");
+
+    int len = (int)strlen(line);
+    int end = tb->cursor_col;
+    if (end < 0) end = 0;
+    if (end > len) end = len;
+
+    const char *colon = strchr(line, ':');
+    if (colon) {
+        int cpos = (int)(colon - line);
+        if (cpos < end) end = cpos;
+    }
+
+    int start = 0;
+    while (start < end && isspace((unsigned char)line[start])) start++;
+    while (end > start && isspace((unsigned char)line[end - 1])) end--;
+
+    int n = end - start;
+    char *out = malloc((size_t)n + 1);
+    if (!out) return NULL;
+    memcpy(out, line + start, (size_t)n);
+    out[n] = '\0';
+    return out;
+}
+
+static void headers_autocomplete(AppState *s) {
+    if (!s || s->header_suggestions_count <= 0 || !s->header_suggestions) return;
+
+    TextBuffer *tb = &s->headers;
+    if (tb->cursor_row < 0 || tb->cursor_row >= tb->line_count) return;
+
+    if (!s->headers_ac_seed || s->headers_ac_row != tb->cursor_row) {
+        char *seed = current_header_prefix(tb);
+        if (!seed) return;
+
+        reset_headers_autocomplete(s);
+        s->headers_ac_seed = seed;
+        s->headers_ac_row = tb->cursor_row;
+        s->headers_ac_next_match = 0;
+    }
+
+    int *matches = malloc((size_t)s->header_suggestions_count * sizeof(*matches));
+    if (!matches) return;
+
+    int mcount = 0;
+    for (int i = 0; i < s->header_suggestions_count; i++) {
+        if (starts_with_ci(s->header_suggestions[i], s->headers_ac_seed)) {
+            matches[mcount++] = i;
+        }
+    }
+
+    if (mcount == 0) {
+        free(matches);
+        return;
+    }
+
+    int pick = matches[s->headers_ac_next_match % mcount];
+    s->headers_ac_next_match++;
+    free(matches);
+
+    const char *name = s->header_suggestions[pick];
+    size_t out_len = strlen(name) + 3;
+    char *line = malloc(out_len);
+    if (!line) return;
+    snprintf(line, out_len, "%s: ", name);
+
+    free(tb->lines[tb->cursor_row]);
+    tb->lines[tb->cursor_row] = line;
+    tb->cursor_col = (int)strlen(line);
+}
+
 static void editor_handle_insert_key(AppState *s, int ch) {
     if (s->active_field == EDIT_FIELD_URL) {
+        reset_headers_autocomplete(s);
         handle_url_insert(s, ch);
         return;
     }
 
     if (s->active_field == EDIT_FIELD_BODY) {
+        reset_headers_autocomplete(s);
         handle_textbuf_insert(&s->body, ch);
         return;
     }
 
+    if (ch == '\t' || ch == 9) {
+        headers_autocomplete(s);
+        return;
+    }
+
+    reset_headers_autocomplete(s);
     handle_textbuf_insert(&s->headers, ch);
 }
 

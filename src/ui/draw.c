@@ -1,6 +1,7 @@
 #include <ncurses.h>
 #include <stdio.h>
 #include <string.h>
+#include "core/env.h"
 #include "core/history.h"
 #include "ui/draw.h"
 
@@ -178,46 +179,67 @@ static void draw_editor_content(WINDOW *w, const AppState *state) {
     int h, wd;
     getmaxyx(w, h, wd);
 
-    // Layout (inside the window box):
-    // row 1: URL label
-    // row 2: URL value
-    // row 3: BODY label
-    // row 4: BODY lines
     const int url_label_row = 1;
     const int url_value_row = 2;
-    const int body_label_row = 3;
-    const int body_first_row = 4;
+    const int split_label_row = 3;
+    const int content_first_row = 4;
+    const int content_last_row = h - 2;
 
-    // URL label (highlight if active)
     if (state->active_field == EDIT_FIELD_URL) wattron(w, A_REVERSE);
     mvwaddnstr(w, url_label_row, 2, "URL:", wd - 4);
     if (state->active_field == EDIT_FIELD_URL) wattroff(w, A_REVERSE);
 
-    // URL value (clip to available width)
     int url_max = wd - 4;
     if (url_max < 0) url_max = 0;
     mvwaddnstr(w, url_value_row, 2, state->url, url_max);
 
-    // BODY label (highlight if active)
-    if (state->active_field == EDIT_FIELD_BODY) wattron(w, A_REVERSE);
-    mvwaddnstr(w, body_label_row, 2, "BODY:", wd - 4);
-    if (state->active_field == EDIT_FIELD_BODY) wattroff(w, A_REVERSE);
-
-    // BODY lines (clip each line)
-    int body_visible_lines = h - 1 - body_first_row; // last usable row is h-2 (since border)
-    if (body_visible_lines < 0) body_visible_lines = 0;
-
-    int line_clip = wd - 4;
-    if (line_clip < 0) line_clip = 0;
-
-    for (int i = 0; i < body_visible_lines; i++) {
-        int row = i;
-        if (row >= state->body.line_count) break;
-
-        mvwaddnstr(w, body_first_row + i, 2, state->body.lines[row], line_clip);
+    if (content_first_row > content_last_row || wd < 12) {
+        wnoutrefresh(w);
+        return;
     }
 
-    // Cursor handling
+    int left_x = 2;
+    int right_x = wd - 3;
+    int divider_x = wd / 2;
+    if (divider_x <= left_x) divider_x = left_x + 1;
+    if (divider_x >= right_x) divider_x = right_x - 1;
+
+    int body_left = left_x;
+    int body_right = divider_x - 2;
+    int headers_left = divider_x + 1;
+    int headers_right = right_x;
+
+    if (body_right < body_left) body_right = body_left;
+    if (headers_right < headers_left) headers_right = headers_left;
+
+    int divider_len = h - split_label_row - 1;
+    if (divider_len > 0) {
+        mvwvline(w, split_label_row, divider_x, ACS_VLINE, divider_len);
+    }
+
+    if (state->active_field == EDIT_FIELD_BODY) wattron(w, A_REVERSE);
+    mvwaddnstr(w, split_label_row, body_left, "BODY", body_right - body_left + 1);
+    if (state->active_field == EDIT_FIELD_BODY) wattroff(w, A_REVERSE);
+
+    if (state->active_field == EDIT_FIELD_HEADERS) wattron(w, A_REVERSE);
+    mvwaddnstr(w, split_label_row, headers_left, "HEADERS", headers_right - headers_left + 1);
+    if (state->active_field == EDIT_FIELD_HEADERS) wattroff(w, A_REVERSE);
+
+    int body_clip = body_right - body_left + 1;
+    if (body_clip < 0) body_clip = 0;
+    int headers_clip = headers_right - headers_left + 1;
+    if (headers_clip < 0) headers_clip = 0;
+    int visible_lines = content_last_row - content_first_row + 1;
+
+    for (int i = 0; i < visible_lines; i++) {
+        if (i < state->body.line_count) {
+            mvwaddnstr(w, content_first_row + i, body_left, state->body.lines[i], body_clip);
+        }
+        if (i < state->headers.line_count) {
+            mvwaddnstr(w, content_first_row + i, headers_left, state->headers.lines[i], headers_clip);
+        }
+    }
+
     curs_set(0);
     if (state->mode == MODE_INSERT && state->focused_panel == PANEL_EDITOR) {
         if (state->active_field == EDIT_FIELD_URL) {
@@ -229,13 +251,24 @@ static void draw_editor_content(WINDOW *w, const AppState *state) {
 
             wmove(w, cy, cx);
             curs_set(1);
-        } else {
-            int cy = body_first_row + state->body.cursor_row;
-            int cx = 2 + state->body.cursor_col;
+        } else if (state->active_field == EDIT_FIELD_BODY) {
+            int cy = content_first_row + state->body.cursor_row;
+            int cx = body_left + state->body.cursor_col;
 
-            if (cy >= body_first_row && cy <= h - 2) {
-                if (cx < 2) cx = 2;
-                if (cx > wd - 2) cx = wd - 2;
+            if (cy >= content_first_row && cy <= content_last_row) {
+                if (cx < body_left) cx = body_left;
+                if (cx > body_right) cx = body_right;
+
+                wmove(w, cy, cx);
+                curs_set(1);
+            }
+        } else {
+            int cy = content_first_row + state->headers.cursor_row;
+            int cx = headers_left + state->headers.cursor_col;
+
+            if (cy >= content_first_row && cy <= content_last_row) {
+                if (cx < headers_left) cx = headers_left;
+                if (cx > headers_right) cx = headers_right;
 
                 wmove(w, cy, cx);
                 curs_set(1);
@@ -303,9 +336,11 @@ void ui_draw(const AppState *state) {
 
 
     char status[256];
-    snprintf(status, sizeof(status), " %s | focus=%s | history_selected=%d ",
+    const char *env_name = env_store_active_name(&state->envs);
+    snprintf(status, sizeof(status), " %s | focus=%s | env=%s | history_selected=%d ",
              mode_label(state->mode),
              panel_label(state->focused_panel),
+             env_name ? env_name : "none",
              state->history_selected);
     mvaddnstr(rows - 1, 2, status, cols - 4);
 
@@ -321,7 +356,8 @@ void ui_draw(const AppState *state) {
 
         draw_boxed_window(
             w_editor,
-            state->active_field == EDIT_FIELD_URL ? " Editor [URL] " : " Editor [BODY] ",
+            state->active_field == EDIT_FIELD_URL ? " Editor [URL] " :
+            (state->active_field == EDIT_FIELD_BODY ? " Editor [BODY] " : " Editor [HEADERS] "),
             state->focused_panel == PANEL_EDITOR
         );
         draw_editor_content(w_editor, state);

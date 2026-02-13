@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include "core/request_thread.h"
 #include "core/dispatch.h"
+#include "core/env.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -93,6 +94,12 @@ void dispatch_action(AppState *s, Action a) {
 
         case ACT_CYCLE_METHOD:
             s->method = (HttpMethod)((s->method + 1) % HTTP_METHOD_COUNT);
+            break;
+
+        case ACT_CYCLE_ENVIRONMENT:
+            if (s->mode == MODE_NORMAL) {
+                env_store_cycle(&s->envs);
+            }
             break;
 
         case ACT_HISTORY_LOAD: {

@@ -1,0 +1,7 @@
+# Common HTTP headers for autocomplete in the HEADERS editor field
+Authorization
+Content-Type
+Accept
+User-Agent
+X-API-Key
+X-Request-ID

@@ -12,9 +12,13 @@ It follows a keyboard-driven workflow inspired by vim while using real HTTP requ
 - Mode-based keyboard workflow (`normal`, `insert`, `command`, `search`)
 - Request editing:
   - URL field
+  - dedicated BODY + HEADERS split editor
   - multiline body
   - multiline headers
+  - headers autocomplete from `config/headers.txt`
 - HTTP methods: `GET`, `POST`, `PUT`, `DELETE`
+- Environments and variables from `config/envs.json`
+- Template substitution for `{{VAR}}` in URL, BODY, and HEADERS
 - Async requests (worker thread) so UI stays responsive
 - Response metadata:
   - status code
@@ -67,10 +71,12 @@ From `config/keymap.conf`:
 - `esc`: return to normal mode
 - `tab`: cycle editor field (`URL` -> `BODY` -> `HEADERS`)
 - `m`: cycle HTTP method
+- `E`: cycle active environment (`dev` -> `prod` -> ...)
 - `r`: send request
 - `enter` (in `History` panel): load selected history item
 - `Shift+Enter` (in `History` panel): replay selected history item
 - `R` (in `History` panel): replay fallback when terminal does not emit `Shift+Enter`
+- `tab` (while editing HEADERS in insert mode): autocomplete header name
 
 ## History Configuration
 
@@ -81,6 +87,36 @@ max_entries = 500
 ```
 
 The app keeps only the newest `max_entries` requests.
+
+## Environments
+
+Environments are loaded from `config/envs.json`:
+
+```json
+{
+  "dev": {
+    "BASE_URL": "https://httpbin.org",
+    "TOKEN": "dev-token"
+  },
+  "prod": {
+    "BASE_URL": "https://api.example.com",
+    "TOKEN": "prod-token"
+  }
+}
+```
+
+Use templates in request fields:
+
+- URL: `{{BASE_URL}}/anything`
+- Header: `Authorization: Bearer {{TOKEN}}`
+- Body: `{"token":"{{TOKEN}}"}`
+
+If a template variable is missing in the active environment, request execution fails with a clear error message.
+
+## Header Autocomplete
+
+Header suggestions come from `config/headers.txt` (one header per line, `#` comments allowed).
+In insert mode with HEADERS active, press `tab` to complete/cycle matching header names.
 
 ## Project Structure
 
@@ -93,6 +129,5 @@ The app keeps only the newest `max_entries` requests.
 ## Current Limitations / Roadmap
 
 - `command` and `search` modes exist, but advanced behaviors are still minimal
-- No environment variables templating yet (e.g. `{{BASE_URL}}`)
 - No request export yet (`curl`/JSON)
 - No advanced auth helpers yet

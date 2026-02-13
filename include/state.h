@@ -1,5 +1,6 @@
 #pragma once
 #include "core/textbuf.h"
+#include "core/env.h"
 
 #define URL_MAX 1024
 
@@ -70,6 +71,14 @@ typedef struct {
     History *history;
     int history_max_entries;
     char *history_path;
+
+    EnvStore envs;
+    char **header_suggestions;
+    int header_suggestions_count;
+
+    int headers_ac_row;
+    int headers_ac_next_match;
+    char *headers_ac_seed;
 } AppState;
 
 void app_state_init(AppState *s);

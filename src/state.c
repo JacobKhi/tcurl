@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "core/history.h"
 #include "core/history_storage.h"
+#include "core/env.h"
 #include "core/textbuf.h"
 
 void app_state_init(AppState *s) {
@@ -45,6 +46,21 @@ void app_state_init(AppState *s) {
         history_trim_oldest(s->history, s->history_max_entries);
     }
     s->history_selected = 0;
+
+    env_store_init(&s->envs);
+    (void)env_store_load_file(&s->envs, "config/envs.json");
+
+    s->header_suggestions = NULL;
+    s->header_suggestions_count = 0;
+    (void)header_suggestions_load(
+        "config/headers.txt",
+        &s->header_suggestions,
+        &s->header_suggestions_count
+    );
+
+    s->headers_ac_row = -1;
+    s->headers_ac_next_match = 0;
+    s->headers_ac_seed = NULL;
 }
 
 void app_state_destroy(AppState *s) {
@@ -63,4 +79,14 @@ void app_state_destroy(AppState *s) {
 
     free(s->history_path);
     s->history_path = NULL;
+
+    env_store_free(&s->envs);
+    header_suggestions_free(s->header_suggestions, s->header_suggestions_count);
+    s->header_suggestions = NULL;
+    s->header_suggestions_count = 0;
+
+    free(s->headers_ac_seed);
+    s->headers_ac_seed = NULL;
+    s->headers_ac_row = -1;
+    s->headers_ac_next_match = 0;
 }
