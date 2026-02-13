@@ -177,3 +177,43 @@ void tb_move_down(TextBuffer *tb) {
         if (tb->cursor_col > len) tb->cursor_col = len;
     }
 }
+
+char *tb_to_string(const TextBuffer *tb) {
+    if (!tb || tb->line_count <= 0) {
+        char *empty = (char *)malloc(1);
+        if (empty) empty[0] = '\0';
+        return empty;
+    }
+
+    size_t total = 1; // for '\0'
+    for (int i = 0; i < tb->line_count; i++) {
+        total += strlen(tb->lines[i]);
+        if (i < tb->line_count - 1) total += 1; // '\n'
+    }
+
+    char *out = (char *)malloc(total);
+    if (!out) return NULL;
+
+    size_t pos = 0;
+    for (int i = 0; i < tb->line_count; i++) {
+        size_t len = strlen(tb->lines[i]);
+        memcpy(out + pos, tb->lines[i], len);
+        pos += len;
+
+        if (i < tb->line_count - 1) out[pos++] = '\n';
+    }
+    out[pos] = '\0';
+    return out;
+}
+
+void tb_set_from_string(TextBuffer *tb, const char *s) {
+    tb_free(tb);
+    tb_init(tb);
+
+    if (!s) return;
+
+    for (const char *p = s; *p; p++) {
+        if (*p == '\n') tb_newline(tb);
+        else tb_insert_char(tb, *p);
+    }
+}

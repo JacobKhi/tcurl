@@ -20,13 +20,29 @@ typedef enum {
 
 typedef enum {
     EDIT_FIELD_URL = 0,
-    EDIT_FIELD_BODY = 1
+    EDIT_FIELD_BODY = 1,
+    EDIT_FIELD_HEADERS = 2
 } EditField;
 
-typedef struct {
+typedef struct HttpResponse {
     long status;
-    char *body;
+    char *body; 
+    char *body_view;
+
+    double elapsed_ms;
+    char *error;
+    int is_json;
 } HttpResponse;
+
+typedef enum {
+    HTTP_GET = 0,
+    HTTP_POST,
+    HTTP_PUT,
+    HTTP_DELETE,
+    HTTP_METHOD_COUNT
+} HttpMethod;
+
+typedef struct History History;
 
 typedef struct {
     int running;
@@ -41,11 +57,17 @@ typedef struct {
     int url_cursor;
 
     TextBuffer body;
+    TextBuffer headers;
 
     EditField active_field;
 
     HttpResponse response;
     int is_request_in_flight;
+    int response_scroll;
+
+    HttpMethod method;
+
+    History *history;
 } AppState;
 
 void app_state_init(AppState *s);

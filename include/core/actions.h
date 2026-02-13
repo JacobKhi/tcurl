@@ -14,6 +14,8 @@ typedef enum {
     ACT_ENTER_SEARCH,
     ACT_SEND_REQUEST,
     ACT_TOGGLE_EDITOR_FIELD,
+    ACT_CYCLE_METHOD,
+    ACT_HISTORY_LOAD,
 
     ACT_COUNT
 } Action;
