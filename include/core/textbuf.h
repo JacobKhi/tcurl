@@ -20,3 +20,5 @@ void tb_move_left(TextBuffer *tb);
 void tb_move_right(TextBuffer *tb);
 void tb_move_up(TextBuffer *tb);
 void tb_move_down(TextBuffer *tb);
+
+char *tb_to_string(const TextBuffer *tb);

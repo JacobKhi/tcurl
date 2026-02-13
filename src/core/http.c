@@ -23,7 +23,7 @@ static size_t write_cb(void *ptr, size_t size, size_t nmemb, void *userdata) {
     return total;
 }
 
-int http_request(const char *url, HttpMethod method, HttpResponse *out) {
+int http_request(const char *url, HttpMethod method, const char *body, HttpResponse *out) {
     CURL *curl = curl_easy_init();
     if (!curl) return -1;
 
@@ -35,29 +35,42 @@ int http_request(const char *url, HttpMethod method, HttpResponse *out) {
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
 
+    struct curl_slist *headers = NULL;
+
+    const char *payload = (body) ? body : "";
+
     switch (method) {
         case HTTP_GET:
             curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
             break;
+
         case HTTP_POST:
             curl_easy_setopt(curl, CURLOPT_POST, 1L);
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "");
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, 0L);
+            headers = curl_slist_append(headers, "Content-Type: application/json");
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload);
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)strlen(payload));
             break;
+
         case HTTP_PUT:
             curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "");
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, 0L);
+            headers = curl_slist_append(headers, "Content-Type: application/json");
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload);
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)strlen(payload));
             break;
+
         case HTTP_DELETE:
             curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
             break;
+
         default:
             break;
     }
 
+    if (headers) curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
     CURLcode res = curl_easy_perform(curl);
     if (res != CURLE_OK) {
+        if (headers) curl_slist_free_all(headers);
         curl_easy_cleanup(curl);
         free(buf.data);
         return -1;
@@ -66,6 +79,7 @@ int http_request(const char *url, HttpMethod method, HttpResponse *out) {
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &out->status);
     out->body = buf.data;
 
+    if (headers) curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
     return 0;
 }
