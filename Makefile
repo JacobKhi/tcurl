@@ -1,6 +1,6 @@
-CC = gcc
-CFLAGS = -Wall -Wextra -O2 -Iinclude
-LDFLAGS = -lncurses
+CC ?= gcc
+CFLAGS ?= -Wall -Wextra -O2 -Iinclude
+LDFLAGS ?= -lncurses -lcurl
 
 TARGET = tcurl
 SRC = \
