@@ -1,6 +1,6 @@
 CC ?= gcc
 CFLAGS ?= -Wall -Wextra -O2 -Iinclude
-LDFLAGS ?= -lncurses -lcurl -lpthread
+LDFLAGS ?= -lncurses -lcurl -lpthread -lcjson
 
 TARGET = tcurl
 SRC = \
@@ -11,7 +11,8 @@ SRC = \
   src/core/dispatch.c \
   src/core/textbuf.c \
   src/core/http.c \
-  src/core/request_thread.c
+  src/core/request_thread.c \
+  src/core/format.c
 
 all: $(TARGET)
 

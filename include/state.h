@@ -25,7 +25,8 @@ typedef enum {
 
 typedef struct {
     long status;
-    char *body;
+    char *body; 
+    char *body_view;
 } HttpResponse;
 
 typedef enum {
@@ -54,10 +55,9 @@ typedef struct {
 
     HttpResponse response;
     int is_request_in_flight;
+    int response_scroll;
 
     HttpMethod method;
-
-    int response_scroll;
 } AppState;
 
 void app_state_init(AppState *s);

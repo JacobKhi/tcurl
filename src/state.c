@@ -23,9 +23,15 @@ void app_state_init(AppState *s) {
     s->method = HTTP_GET;
 
     s->response_scroll = 0;
+
+    s->response.body = NULL;
+    s->response.body_view = NULL;
 }
 
 void app_state_destroy(AppState *s) {
     tb_free(&s->body);
     free(s->response.body);
+
+    free(s->response.body);
+    free(s->response.body_view);
 }

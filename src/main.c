@@ -104,7 +104,7 @@ static void draw_response_content(WINDOW *w, const AppState *state) {
         return;
     }
 
-    if (!state->response.body) {
+    if (!state->response.body_view) {
         mvwaddnstr(w, 1, 2, "No response yet", wd - 4);
         wnoutrefresh(w);
         return;
@@ -118,7 +118,7 @@ static void draw_response_content(WINDOW *w, const AppState *state) {
     int visible = h - 3;
     if (visible <= 0) { wnoutrefresh(w); return; }
 
-    const char *p = skip_lines(state->response.body, state->response_scroll);
+    const char *p = skip_lines(state->response.body_view, state->response_scroll);
 
     int row = 2;
     int clip = wd - 4;
