@@ -7,6 +7,9 @@
 #include "core/dispatch.h"
 #include "core/env.h"
 #include "core/layout.h"
+#include "core/request_snapshot.h"
+#include "core/export.h"
+#include "core/auth.h"
 #include "ui/draw.h"
 #include <ncurses.h>
 #include <ctype.h>
@@ -70,6 +73,12 @@ static void begin_prompt(AppState *s, PromptKind kind) {
     s->prompt_input[0] = '\0';
     s->prompt_len = 0;
     s->prompt_cursor = 0;
+}
+
+static SearchTarget effective_search_target(const AppState *s) {
+    if (s->search_target_override == SEARCH_TARGET_HISTORY) return SEARCH_TARGET_HISTORY;
+    if (s->search_target_override == SEARCH_TARGET_RESPONSE) return SEARCH_TARGET_RESPONSE;
+    return (s->focused_panel == PANEL_HISTORY) ? SEARCH_TARGET_HISTORY : SEARCH_TARGET_RESPONSE;
 }
 
 static int contains_ci_n(const char *hay, size_t hay_n, const char *needle) {
@@ -457,6 +466,137 @@ static void command_clear_history(AppState *s) {
     }
 }
 
+static void command_export_request(AppState *s, const char *format) {
+    if (!format || !format[0]) {
+        response_set_error(s, "Usage: :export curl|json");
+        return;
+    }
+
+    RequestSnapshot snap;
+    if (request_snapshot_build_locked(s, &snap) != 0) {
+        response_set_error(s, "Out of memory creating export snapshot");
+        return;
+    }
+
+    char *out = NULL;
+    if (strcmp(format, "curl") == 0) {
+        out = export_as_curl(&snap);
+    } else if (strcmp(format, "json") == 0) {
+        out = export_as_json(&snap);
+    } else {
+        request_snapshot_free(&snap);
+        response_set_error(s, "Unknown export format. Use curl or json");
+        return;
+    }
+
+    request_snapshot_free(&snap);
+    if (!out) {
+        response_set_error(s, "Export failed");
+        return;
+    }
+
+    response_set_text(s, out);
+    free(out);
+}
+
+static void command_auth(AppState *s, const char *kind, const char *arg) {
+    if (!kind || !*kind || !arg || !*arg) {
+        response_set_error(s, "Usage: :auth bearer <token> | :auth basic <user>:<pass>");
+        return;
+    }
+
+    int rc = 1;
+    if (strcmp(kind, "bearer") == 0) {
+        rc = auth_apply_bearer(&s->headers, arg);
+    } else if (strcmp(kind, "basic") == 0) {
+        const char *sep = strchr(arg, ':');
+        if (!sep) {
+            response_set_error(s, "Usage: :auth basic <user>:<pass>");
+            return;
+        }
+
+        size_t ulen = (size_t)(sep - arg);
+        char *user = malloc(ulen + 1);
+        if (!user) {
+            response_set_error(s, "Out of memory applying auth");
+            return;
+        }
+        memcpy(user, arg, ulen);
+        user[ulen] = '\0';
+        const char *pass = sep + 1;
+        rc = auth_apply_basic(&s->headers, user, pass);
+        free(user);
+    } else {
+        response_set_error(s, "Unknown auth kind. Use bearer or basic");
+        return;
+    }
+
+    if (rc == 0) response_set_text(s, "Authorization header updated");
+    else response_set_error(s, "Failed to update Authorization header");
+}
+
+static void command_find(AppState *s, const char *query) {
+    if (!query || !*query) {
+        response_set_error(s, "Usage: :find <term>");
+        return;
+    }
+    s->search_target = effective_search_target(s);
+    dispatch_apply_search(s, query);
+}
+
+static void command_set(AppState *s, const char *key, const char *value) {
+    if (!key || !*key) {
+        char msg[256];
+        const char *mode = "auto";
+        if (s->search_target_override == SEARCH_TARGET_HISTORY) mode = "history";
+        if (s->search_target_override == SEARCH_TARGET_RESPONSE) mode = "response";
+        snprintf(
+            msg,
+            sizeof(msg),
+            "Settings:\n- search_target=%s\n- history_max_entries=%d",
+            mode,
+            s->history_max_entries
+        );
+        response_set_text(s, msg);
+        return;
+    }
+
+    if (strcmp(key, "search_target") == 0) {
+        if (!value) {
+            response_set_error(s, "Usage: :set search_target auto|history|response");
+            return;
+        }
+        if (strcmp(value, "auto") == 0) s->search_target_override = -1;
+        else if (strcmp(value, "history") == 0) s->search_target_override = SEARCH_TARGET_HISTORY;
+        else if (strcmp(value, "response") == 0) s->search_target_override = SEARCH_TARGET_RESPONSE;
+        else {
+            response_set_error(s, "Usage: :set search_target auto|history|response");
+            return;
+        }
+        response_set_text(s, "search_target updated");
+        return;
+    }
+
+    if (strcmp(key, "max_entries") == 0) {
+        if (!value) {
+            response_set_error(s, "Usage: :set max_entries <int>");
+            return;
+        }
+        char *end = NULL;
+        long n = strtol(value, &end, 10);
+        if (!end || *end != '\0' || n <= 0 || n > 1000000) {
+            response_set_error(s, "Usage: :set max_entries <int>");
+            return;
+        }
+        s->history_max_entries = (int)n;
+        if (s->history) history_trim_oldest(s->history, s->history_max_entries);
+        response_set_text(s, "max_entries updated (session only)");
+        return;
+    }
+
+    response_set_error(s, "Unknown setting. Use search_target or max_entries");
+}
+
 static char *build_help_text(const Keymap *km) {
     if (!km) return strdup("No keymap loaded.");
 
@@ -470,6 +610,11 @@ static char *build_help_text(const Keymap *km) {
     if (!appendf(&buf, &len, &cap, "  :theme list  List available theme presets\n")) goto fail;
     if (!appendf(&buf, &len, &cap, "  :theme <name>  Apply theme preset for current session\n")) goto fail;
     if (!appendf(&buf, &len, &cap, "  :theme <name> -s|--save  Apply and persist active preset\n")) goto fail;
+    if (!appendf(&buf, &len, &cap, "  :export curl|json  Export current request\n")) goto fail;
+    if (!appendf(&buf, &len, &cap, "  :auth bearer <token>  Set Authorization bearer header\n")) goto fail;
+    if (!appendf(&buf, &len, &cap, "  :auth basic <user>:<pass>  Set Authorization basic header\n")) goto fail;
+    if (!appendf(&buf, &len, &cap, "  :find <term>  Run contextual search immediately\n")) goto fail;
+    if (!appendf(&buf, &len, &cap, "  :set [search_target|max_entries] ...  Update runtime settings\n")) goto fail;
     if (!appendf(&buf, &len, &cap, "  :clear! | :ch!  Clear history (memory + storage)\n\n")) goto fail;
     if (!appendf(&buf, &len, &cap, "Key bindings:\n")) goto fail;
 
@@ -594,6 +739,68 @@ void dispatch_execute_command(AppState *s, const Keymap *km, const char *cmd) {
         return;
     }
 
+    if (strncmp(p, "export", 6) == 0 && (p[6] == '\0' || isspace((unsigned char)p[6]))) {
+        char *args = p + 6;
+        while (*args && isspace((unsigned char)*args)) args++;
+        if (!*args) {
+            response_set_error(s, "Usage: :export curl|json");
+        } else {
+            char *fmt = strtok(args, " \t");
+            char *extra = strtok(NULL, " \t");
+            if (extra) response_set_error(s, "Usage: :export curl|json");
+            else command_export_request(s, fmt);
+        }
+        s->mode = MODE_NORMAL;
+        clear_prompt(s);
+        return;
+    }
+
+    if (strncmp(p, "auth", 4) == 0 && (p[4] == '\0' || isspace((unsigned char)p[4]))) {
+        char *args = p + 4;
+        while (*args && isspace((unsigned char)*args)) args++;
+        char *kind = args;
+        char *arg = NULL;
+        while (*args && !isspace((unsigned char)*args)) args++;
+        if (*args) {
+            *args = '\0';
+            arg = args + 1;
+            while (*arg && isspace((unsigned char)*arg)) arg++;
+            if (!*arg) arg = NULL;
+        } else if (!*kind) {
+            kind = NULL;
+        }
+        command_auth(s, kind, arg);
+        s->mode = MODE_NORMAL;
+        clear_prompt(s);
+        return;
+    }
+
+    if (strncmp(p, "find", 4) == 0 && (p[4] == '\0' || isspace((unsigned char)p[4]))) {
+        char *args = p + 4;
+        while (*args && isspace((unsigned char)*args)) args++;
+        command_find(s, args);
+        s->mode = MODE_NORMAL;
+        clear_prompt(s);
+        return;
+    }
+
+    if (strncmp(p, "set", 3) == 0 && (p[3] == '\0' || isspace((unsigned char)p[3]))) {
+        char *args = p + 3;
+        while (*args && isspace((unsigned char)*args)) args++;
+        if (!*args) {
+            command_set(s, NULL, NULL);
+        } else {
+            char *key = strtok(args, " \t");
+            char *val = strtok(NULL, " \t");
+            char *extra = strtok(NULL, " \t");
+            if (extra) response_set_error(s, "Usage: :set <key> <value>");
+            else command_set(s, key, val);
+        }
+        s->mode = MODE_NORMAL;
+        clear_prompt(s);
+        return;
+    }
+
     if (strcmp(p, "clear!") == 0 || strcmp(p, "ch!") == 0) {
         command_clear_history(s);
         s->mode = MODE_NORMAL;
@@ -623,14 +830,13 @@ void dispatch_action(AppState *s, Action a) {
         case ACT_ENTER_COMMAND:
             s->mode = MODE_COMMAND;
             begin_prompt(s, PROMPT_COMMAND);
+            s->command_history_index = -1;
             break;
         case ACT_ENTER_SEARCH:
             s->mode = MODE_SEARCH;
             begin_prompt(s, PROMPT_SEARCH);
             s->search_not_found = 0;
-            s->search_target = (s->focused_panel == PANEL_HISTORY)
-                ? SEARCH_TARGET_HISTORY
-                : SEARCH_TARGET_RESPONSE;
+            s->search_target = effective_search_target(s);
             break;
 
         case ACT_FOCUS_LEFT:

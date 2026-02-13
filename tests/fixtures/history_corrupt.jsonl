@@ -1,0 +1,3 @@
+{"method":0,"url":"https://a","body":"","headers":"","status":200,"elapsed_ms":1,"is_json":0,"response_body":"ok","response_body_view":"ok"}
+{bad-json-line
+{"method":1,"url":"https://b","body":"x","headers":"h: v","status":201,"elapsed_ms":2,"is_json":0,"response_body":"b","response_body_view":"b"}

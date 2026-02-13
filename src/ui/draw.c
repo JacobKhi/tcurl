@@ -727,6 +727,7 @@ void ui_draw(AppState *state) {
 
     int rows, cols;
     getmaxyx(stdscr, rows, cols);
+    app_state_lock(state);
     g_editor_cursor_abs_y = -1;
     g_editor_cursor_abs_x = -1;
 
@@ -803,11 +804,12 @@ void ui_draw(AppState *state) {
             snprintf(
                 status,
                 sizeof(status),
-                " %s | focus=%s | env=%s | history_selected=%d | not found: %s ",
+                " %s | focus=%s | env=%s | history_selected=%d | load_skipped=%d | not found: %s ",
                 mode_label(state->mode),
                 panel_label(state->focused_panel),
                 env_name ? env_name : "none",
                 state->history_selected,
+                state->history_skipped_invalid,
                 state->search_query
             );
             if (g_theme_colors) attron(COLOR_PAIR(PAIR_WARN) | A_BOLD);
@@ -817,11 +819,13 @@ void ui_draw(AppState *state) {
             snprintf(
                 status,
                 sizeof(status),
-                " %s | focus=%s | env=%s | history_selected=%d ",
+                " %s | focus=%s | env=%s | history_selected=%d | load_skipped=%d | save_err=%d ",
                 mode_label(state->mode),
                 panel_label(state->focused_panel),
                 env_name ? env_name : "none",
-                state->history_selected
+                state->history_selected,
+                state->history_skipped_invalid,
+                state->history_last_save_error
             );
             mvaddnstr(rows - 1, 2, status, cols - 4);
         }
@@ -866,5 +870,6 @@ void ui_draw(AppState *state) {
         curs_set(0);
     }
 
+    app_state_unlock(state);
     doupdate();
 }

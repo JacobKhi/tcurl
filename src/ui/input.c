@@ -223,6 +223,46 @@ static void prompt_backspace(AppState *s) {
     s->prompt_len--;
 }
 
+static void command_history_push(AppState *s, const char *cmd) {
+    if (!s || !cmd || !cmd[0]) return;
+
+    if (s->command_history_count > 0) {
+        const char *last = s->command_history[s->command_history_count - 1];
+        if (strcmp(last, cmd) == 0) {
+            s->command_history_index = s->command_history_count;
+            return;
+        }
+    }
+
+    if (s->command_history_count < CMD_HISTORY_MAX) {
+        snprintf(s->command_history[s->command_history_count], PROMPT_MAX, "%s", cmd);
+        s->command_history_count++;
+    } else {
+        memmove(
+            s->command_history,
+            s->command_history + 1,
+            sizeof(s->command_history[0]) * (CMD_HISTORY_MAX - 1)
+        );
+        snprintf(s->command_history[CMD_HISTORY_MAX - 1], PROMPT_MAX, "%s", cmd);
+    }
+
+    s->command_history_index = s->command_history_count;
+}
+
+static void command_history_recall(AppState *s) {
+    if (!s) return;
+    if (s->command_history_index < 0 || s->command_history_index >= s->command_history_count) return;
+
+    strncpy(
+        s->prompt_input,
+        s->command_history[s->command_history_index],
+        PROMPT_MAX - 1
+    );
+    s->prompt_input[PROMPT_MAX - 1] = '\0';
+    s->prompt_len = (int)strlen(s->prompt_input);
+    s->prompt_cursor = s->prompt_len;
+}
+
 static void handle_command_mode_key(AppState *s, Keymap *km, int ch) {
     if (ch == KEY_BACKSPACE || ch == 127 || ch == 8) {
         prompt_backspace(s);
@@ -238,7 +278,31 @@ static void handle_command_mode_key(AppState *s, Keymap *km, int ch) {
         return;
     }
 
+    if (ch == KEY_UP) {
+        if (s->command_history_count <= 0) return;
+        if (s->command_history_index < 0) s->command_history_index = s->command_history_count - 1;
+        else if (s->command_history_index > 0) s->command_history_index--;
+        command_history_recall(s);
+        return;
+    }
+
+    if (ch == KEY_DOWN) {
+        if (s->command_history_count <= 0) return;
+        if (s->command_history_index < 0) return;
+        if (s->command_history_index < s->command_history_count - 1) {
+            s->command_history_index++;
+            command_history_recall(s);
+        } else {
+            s->command_history_index = -1;
+            s->prompt_input[0] = '\0';
+            s->prompt_len = 0;
+            s->prompt_cursor = 0;
+        }
+        return;
+    }
+
     if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+        command_history_push(s, s->prompt_input);
         dispatch_execute_command(s, km, s->prompt_input);
         return;
     }
@@ -275,24 +339,31 @@ static void handle_search_mode_key(AppState *s, int ch) {
 }
 
 void ui_handle_key(AppState *state, Keymap *keymap, int ch) {
+    app_state_lock(state);
+
     Action a = keymap_resolve(keymap, state->mode, ch);
 
     if (a != ACT_NONE) {
         dispatch_action(state, a);
+        app_state_unlock(state);
         return;
     }
 
     if (state->mode == MODE_INSERT) {
         editor_handle_insert_key(state, ch);
+        app_state_unlock(state);
         return;
     }
 
     if (state->mode == MODE_COMMAND) {
         handle_command_mode_key(state, keymap, ch);
+        app_state_unlock(state);
         return;
     }
 
     if (state->mode == MODE_SEARCH) {
         handle_search_mode_key(state, ch);
     }
+
+    app_state_unlock(state);
 }
