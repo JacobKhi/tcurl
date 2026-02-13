@@ -147,6 +147,10 @@ int http_request(
         case HTTP_DELETE:
             curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
             break;
+
+        case HTTP_METHOD_COUNT:
+            curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
+            break;
     }
 
     CURLcode res = curl_easy_perform(curl);

@@ -6,6 +6,8 @@ TARGET = tcurl
 SRC = \
   src/main.c \
   src/state.c \
+  src/ui/draw.c \
+  src/ui/input.c \
   src/core/actions.c \
   src/core/keymap.c \
   src/core/dispatch.c \

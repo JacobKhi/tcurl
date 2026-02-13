@@ -2,6 +2,7 @@
 #include "core/actions.h"
 #include <pthread.h>
 #include "core/request_thread.h"
+#include "core/dispatch.h"
 
 void dispatch_action(AppState *s, Action a) {
     switch (a) {
