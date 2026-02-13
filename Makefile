@@ -9,9 +9,12 @@ SRC = \
   src/ui/draw.c \
   src/ui/input.c \
   src/core/actions.c \
+  src/core/auth.c \
   src/core/keymap.c \
   src/core/dispatch.c \
+  src/core/export.c \
   src/core/paths.c \
+  src/core/request_snapshot.c \
   src/core/textbuf.c \
   src/core/history.c \
   src/core/history_storage.c \
@@ -28,6 +31,7 @@ $(TARGET): $(SRC)
 
 clean:
 	rm -f $(TARGET)
+	rm -f tests/run_tests tests/run_tests_asan
 
 deps:
 	sh scripts/setup.sh
@@ -51,6 +55,38 @@ check-deps:
 		exit 1; \
 	fi; \
 	echo "All dependencies are available."
+
+TEST_TARGET = tests/run_tests
+TEST_SRC = \
+  tests/test_main.c \
+  tests/test_keymap.c \
+  tests/test_layout.c \
+  tests/test_env.c \
+  tests/test_history_storage.c \
+  tests/test_format.c \
+  tests/test_export_auth.c
+TEST_CORE_SRC = \
+  src/core/actions.c \
+  src/core/auth.c \
+  src/core/export.c \
+  src/core/keymap.c \
+  src/core/layout.c \
+  src/core/env.c \
+  src/core/textbuf.c \
+  src/core/history.c \
+  src/core/history_storage.c \
+  src/core/format.c
+TEST_LDFLAGS = -lncurses -lcjson -lpthread
+
+$(TEST_TARGET): $(TEST_SRC) $(TEST_CORE_SRC)
+	$(CC) $(CFLAGS) -o $(TEST_TARGET) $(TEST_SRC) $(TEST_CORE_SRC) $(TEST_LDFLAGS)
+
+test: $(TEST_TARGET)
+	./$(TEST_TARGET)
+
+test-sanitizers:
+	$(CC) $(CFLAGS) -fsanitize=address,undefined -fno-omit-frame-pointer -o tests/run_tests_asan $(TEST_SRC) $(TEST_CORE_SRC) $(TEST_LDFLAGS) -fsanitize=address,undefined
+	ASAN_OPTIONS=detect_leaks=0 ./tests/run_tests_asan
 
 install-user: $(TARGET)
 	@set -e; \
@@ -87,4 +123,7 @@ uninstall-user:
 	fi; \
 	echo "User config kept at $$HOME/.config/tcurl"
 
-.PHONY: all clean deps check-deps install-user uninstall-user
+release: $(TARGET)
+	sh scripts/release.sh
+
+.PHONY: all clean deps check-deps test test-sanitizers install-user uninstall-user release

@@ -7,8 +7,22 @@
 #include "core/layout.h"
 #include "core/paths.h"
 #include "core/textbuf.h"
+#include <unistd.h>
+
+void app_state_lock(AppState *s) {
+    if (!s) return;
+    (void)pthread_mutex_lock(&s->state_mu);
+}
+
+void app_state_unlock(AppState *s) {
+    if (!s) return;
+    (void)pthread_mutex_unlock(&s->state_mu);
+}
 
 void app_state_init(AppState *s) {
+    memset(s, 0, sizeof(*s));
+    (void)pthread_mutex_init(&s->state_mu, NULL);
+
     paths_init(&s->paths);
     if (paths_resolve_config_dir(&s->paths) != 0 || paths_build_file_paths(&s->paths) != 0) {
         paths_free(&s->paths);
@@ -79,10 +93,16 @@ void app_state_init(AppState *s) {
         s->history_path = strdup("./history.jsonl");
     }
 
+    s->history_loaded_ok = 0;
+    s->history_skipped_invalid = 0;
+    s->history_last_save_error = 0;
     s->history = malloc(sizeof(*s->history));
     if (s->history) {
+        HistoryLoadStats hs = {0};
         history_init(s->history);
-        (void)history_storage_load(s->history, s->history_path);
+        (void)history_storage_load_with_stats(s->history, s->history_path, &hs);
+        s->history_loaded_ok = hs.loaded_ok;
+        s->history_skipped_invalid = hs.skipped_invalid;
         history_trim_oldest(s->history, s->history_max_entries);
     }
     s->history_selected = 0;
@@ -109,9 +129,13 @@ void app_state_init(AppState *s) {
     memset(s->prompt_input, 0, sizeof(s->prompt_input));
     s->prompt_len = 0;
     s->prompt_cursor = 0;
+    memset(s->command_history, 0, sizeof(s->command_history));
+    s->command_history_count = 0;
+    s->command_history_index = -1;
 
     memset(s->search_query, 0, sizeof(s->search_query));
     s->search_target = SEARCH_TARGET_HISTORY;
+    s->search_target_override = -1;
     s->search_match_index = -1;
     s->search_not_found = 0;
 
@@ -120,6 +144,14 @@ void app_state_init(AppState *s) {
 }
 
 void app_state_destroy(AppState *s) {
+    for (;;) {
+        app_state_lock(s);
+        int inflight = s->is_request_in_flight;
+        app_state_unlock(s);
+        if (!inflight) break;
+        usleep(1000);
+    }
+
     tb_free(&s->body);
     tb_free(&s->headers);
 
@@ -154,8 +186,12 @@ void app_state_destroy(AppState *s) {
     s->prompt_kind = PROMPT_NONE;
     s->prompt_len = 0;
     s->prompt_cursor = 0;
+    s->command_history_count = 0;
+    s->command_history_index = -1;
+    s->search_target_override = -1;
     s->search_match_index = -1;
     s->search_not_found = 0;
     s->body_scroll = 0;
     s->headers_scroll = 0;
+    (void)pthread_mutex_destroy(&s->state_mu);
 }

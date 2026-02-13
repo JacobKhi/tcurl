@@ -105,7 +105,16 @@ char *history_storage_default_path(void) {
 }
 
 int history_storage_load(History *h, const char *path) {
+    return history_storage_load_with_stats(h, path, NULL);
+}
+
+int history_storage_load_with_stats(History *h, const char *path, HistoryLoadStats *stats) {
     if (!h || !path) return 1;
+
+    if (stats) {
+        stats->loaded_ok = 0;
+        stats->skipped_invalid = 0;
+    }
 
     FILE *f = fopen(path, "r");
     if (!f) {
@@ -119,7 +128,10 @@ int history_storage_load(History *h, const char *path) {
         if (line[0] == '\0') continue;
 
         cJSON *root = cJSON_Parse(line);
-        if (!root) continue;
+        if (!root) {
+            if (stats) stats->skipped_invalid++;
+            continue;
+        }
 
         int method = json_get_int(root, "method", 0);
         long status = json_get_long(root, "status", 0);
@@ -149,6 +161,7 @@ int history_storage_load(History *h, const char *path) {
         resp.error = NULL;
 
         history_push(h, method, url, &body_tb, &headers_tb, &resp);
+        if (stats) stats->loaded_ok++;
 
         tb_free(&body_tb);
         tb_free(&headers_tb);
@@ -166,6 +179,46 @@ int history_storage_load(History *h, const char *path) {
 
     fclose(f);
     return 0;
+}
+
+static int append_history_item(FILE *f, const HistoryItem *it) {
+    cJSON *root = cJSON_CreateObject();
+    if (!root) return 1;
+
+    cJSON_AddNumberToObject(root, "method", it->method);
+    cJSON_AddStringToObject(root, "url", it->url ? it->url : "");
+    cJSON_AddStringToObject(root, "body", it->body ? it->body : "");
+    cJSON_AddStringToObject(root, "headers", it->headers ? it->headers : "");
+    cJSON_AddNumberToObject(root, "status", it->status);
+    cJSON_AddNumberToObject(root, "elapsed_ms", it->elapsed_ms);
+    cJSON_AddNumberToObject(root, "is_json", it->is_json);
+
+    if (it->response_body) cJSON_AddStringToObject(root, "response_body", it->response_body);
+    else cJSON_AddNullToObject(root, "response_body");
+
+    if (it->response_body_view) cJSON_AddStringToObject(root, "response_body_view", it->response_body_view);
+    else cJSON_AddNullToObject(root, "response_body_view");
+
+    char *line = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    if (!line) return 1;
+
+    int rc = 0;
+    if (fputs(line, f) < 0 || fputc('\n', f) == EOF) rc = 1;
+    free(line);
+    return rc;
+}
+
+int history_storage_append_last(const History *h, const char *path) {
+    if (!h || !path) return 1;
+    if (h->count <= 0) return 0;
+    if (ensure_parent_dirs(path) != 0) return 1;
+
+    FILE *f = fopen(path, "a");
+    if (!f) return 1;
+    int rc = append_history_item(f, &h->items[h->count - 1]);
+    if (fclose(f) != 0) rc = 1;
+    return rc;
 }
 
 int history_storage_save(const History *h, const char *path) {
@@ -186,40 +239,10 @@ int history_storage_save(const History *h, const char *path) {
     int rc = 0;
     for (int i = 0; i < h->count; i++) {
         const HistoryItem *it = &h->items[i];
-
-        cJSON *root = cJSON_CreateObject();
-        if (!root) {
+        if (append_history_item(f, it) != 0) {
             rc = 1;
             break;
         }
-
-        cJSON_AddNumberToObject(root, "method", it->method);
-        cJSON_AddStringToObject(root, "url", it->url ? it->url : "");
-        cJSON_AddStringToObject(root, "body", it->body ? it->body : "");
-        cJSON_AddStringToObject(root, "headers", it->headers ? it->headers : "");
-        cJSON_AddNumberToObject(root, "status", it->status);
-        cJSON_AddNumberToObject(root, "elapsed_ms", it->elapsed_ms);
-        cJSON_AddNumberToObject(root, "is_json", it->is_json);
-
-        if (it->response_body) cJSON_AddStringToObject(root, "response_body", it->response_body);
-        else cJSON_AddNullToObject(root, "response_body");
-
-        if (it->response_body_view) cJSON_AddStringToObject(root, "response_body_view", it->response_body_view);
-        else cJSON_AddNullToObject(root, "response_body_view");
-
-        char *line = cJSON_PrintUnformatted(root);
-        cJSON_Delete(root);
-        if (!line) {
-            rc = 1;
-            break;
-        }
-
-        if (fputs(line, f) < 0 || fputc('\n', f) == EOF) {
-            free(line);
-            rc = 1;
-            break;
-        }
-        free(line);
     }
 
     if (fclose(f) != 0) rc = 1;

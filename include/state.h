@@ -1,4 +1,5 @@
 #pragma once
+#include <pthread.h>
 #include "core/textbuf.h"
 #include "core/env.h"
 #include "core/layout.h"
@@ -6,6 +7,7 @@
 
 #define URL_MAX 1024
 #define PROMPT_MAX 256
+#define CMD_HISTORY_MAX 32
 
 typedef enum {
     MODE_NORMAL = 0,
@@ -62,6 +64,7 @@ typedef struct History History;
 typedef struct {
     int running;
     Mode mode;
+    pthread_mutex_t state_mu;
 
     Panel focused_panel;
     LayoutProfile ui_layout_profile;
@@ -94,6 +97,9 @@ typedef struct {
     History *history;
     int history_max_entries;
     char *history_path;
+    int history_loaded_ok;
+    int history_skipped_invalid;
+    int history_last_save_error;
 
     EnvStore envs;
     char **header_suggestions;
@@ -107,9 +113,13 @@ typedef struct {
     char prompt_input[PROMPT_MAX];
     int prompt_len;
     int prompt_cursor;
+    char command_history[CMD_HISTORY_MAX][PROMPT_MAX];
+    int command_history_count;
+    int command_history_index;
 
     char search_query[PROMPT_MAX];
     SearchTarget search_target;
+    int search_target_override; /* -1 auto, else SearchTarget */
     int search_match_index;
     int search_not_found;
 
@@ -120,3 +130,6 @@ typedef struct {
 void app_state_init(AppState *s);
 
 void app_state_destroy(AppState *s);
+
+void app_state_lock(AppState *s);
+void app_state_unlock(AppState *s);
