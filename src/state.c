@@ -4,12 +4,39 @@
 #include "core/history.h"
 #include "core/history_storage.h"
 #include "core/env.h"
+#include "core/layout.h"
 #include "core/textbuf.h"
 
 void app_state_init(AppState *s) {
     s->running = 1;
     s->mode = MODE_NORMAL;
     s->focused_panel = PANEL_HISTORY;
+    s->ui_layout_profile = LAYOUT_PROFILE_CLASSIC;
+    s->quad_history_slot = LAYOUT_SLOT_TL;
+    s->quad_editor_slot = LAYOUT_SLOT_TR;
+    s->quad_response_slot = LAYOUT_SLOT_BR;
+    memset(s->active_theme_preset, 0, sizeof(s->active_theme_preset));
+    (void)layout_load_config(
+        "config/layout.conf",
+        &s->ui_layout_profile,
+        &s->quad_history_slot,
+        &s->quad_editor_slot,
+        &s->quad_response_slot,
+        &s->ui_layout_sizing,
+        &s->ui_theme,
+        s->active_theme_preset,
+        sizeof(s->active_theme_preset)
+    );
+    layout_theme_catalog_init(&s->theme_catalog);
+    (void)layout_theme_catalog_load("config/themes.conf", &s->theme_catalog);
+    if (s->active_theme_preset[0] != '\0') {
+        LayoutTheme themed;
+        if (layout_theme_catalog_apply(&s->theme_catalog, s->active_theme_preset, &themed) == 0) {
+            s->ui_theme = themed;
+        } else {
+            s->active_theme_preset[0] = '\0';
+        }
+    }
     s->history_selected = 0;
 
     memset(s->url, 0, sizeof(s->url));
@@ -92,6 +119,9 @@ void app_state_destroy(AppState *s) {
 
     free(s->history_path);
     s->history_path = NULL;
+
+    layout_theme_catalog_free(&s->theme_catalog);
+    s->active_theme_preset[0] = '\0';
 
     env_store_free(&s->envs);
     header_suggestions_free(s->header_suggestions, s->header_suggestions_count);

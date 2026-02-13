@@ -1,6 +1,7 @@
 #pragma once
 #include "core/textbuf.h"
 #include "core/env.h"
+#include "core/layout.h"
 
 #define URL_MAX 1024
 #define PROMPT_MAX 256
@@ -62,6 +63,14 @@ typedef struct {
     Mode mode;
 
     Panel focused_panel;
+    LayoutProfile ui_layout_profile;
+    LayoutSlot quad_history_slot;
+    LayoutSlot quad_editor_slot;
+    LayoutSlot quad_response_slot;
+    LayoutSizing ui_layout_sizing;
+    LayoutTheme ui_theme;
+    ThemeCatalog theme_catalog;
+    char active_theme_preset[64];
 
     int history_selected;
 
