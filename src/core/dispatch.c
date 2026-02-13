@@ -1,8 +1,11 @@
 #include "state.h"
 #include "core/actions.h"
+#include "core/history.h"
 #include <pthread.h>
 #include "core/request_thread.h"
 #include "core/dispatch.h"
+#include <stdlib.h>
+#include <string.h>
 
 void dispatch_action(AppState *s, Action a) {
     switch (a) {
@@ -57,6 +60,39 @@ void dispatch_action(AppState *s, Action a) {
         case ACT_CYCLE_METHOD:
             s->method = (HttpMethod)((s->method + 1) % HTTP_METHOD_COUNT);
             break;
+
+        case ACT_HISTORY_LOAD: {
+            if (s->focused_panel != PANEL_HISTORY) break;
+            if (!s->history) break;
+
+            HistoryItem *it = history_get(s->history, s->history_selected);
+            if (!it) break;
+
+            s->method = it->method;
+
+            strncpy(s->url, it->url ? it->url : "", sizeof(s->url) - 1);
+            s->url[sizeof(s->url) - 1] = '\0';
+            s->url_len = strlen(s->url);
+            s->url_cursor = s->url_len;
+
+            tb_set_from_string(&s->body, it->body);
+            tb_set_from_string(&s->headers, it->headers);
+
+            free(s->response.body);
+            free(s->response.body_view);
+            free(s->response.error);
+
+            s->response.status = it->status;
+            s->response.elapsed_ms = it->elapsed_ms;
+            s->response.is_json = it->is_json;
+            s->response.body = it->response_body ? strdup(it->response_body) : NULL;
+            s->response.body_view = it->response_body_view ? strdup(it->response_body_view) : NULL;
+            s->response.error = NULL;
+
+            s->response_scroll = 0;
+            s->focused_panel = PANEL_EDITOR;
+            break;
+        }
 
         default:
             break;

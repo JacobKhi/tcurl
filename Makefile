@@ -12,6 +12,7 @@ SRC = \
   src/core/keymap.c \
   src/core/dispatch.c \
   src/core/textbuf.c \
+  src/core/history.c \
   src/core/http.c \
   src/core/request_thread.c \
   src/core/format.c

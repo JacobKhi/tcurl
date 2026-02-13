@@ -1,6 +1,7 @@
 #include "state.h"
 #include <string.h>
 #include <stdlib.h>
+#include "core/history.h"
 #include "core/textbuf.h"
 
 void app_state_init(AppState *s) {
@@ -29,6 +30,13 @@ void app_state_init(AppState *s) {
     s->response.body_view = NULL;
     s->response.elapsed_ms = 0.0;
     s->response.error = NULL;
+
+    s->history = malloc(sizeof(*s->history));
+    if (s->history) {
+        history_init(s->history);
+    }
+    s->history_selected = 0;
+
 }
 
 void app_state_destroy(AppState *s) {
@@ -38,4 +46,10 @@ void app_state_destroy(AppState *s) {
     free(s->response.body);
     free(s->response.body_view);
     free(s->response.error);
+
+    if (s->history) {
+        history_free(s->history);
+        free(s->history);
+        s->history = NULL;
+    }
 }

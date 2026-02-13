@@ -205,3 +205,15 @@ char *tb_to_string(const TextBuffer *tb) {
     out[pos] = '\0';
     return out;
 }
+
+void tb_set_from_string(TextBuffer *tb, const char *s) {
+    tb_free(tb);
+    tb_init(tb);
+
+    if (!s) return;
+
+    for (const char *p = s; *p; p++) {
+        if (*p == '\n') tb_newline(tb);
+        else tb_insert_char(tb, *p);
+    }
+}

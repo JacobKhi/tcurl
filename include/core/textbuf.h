@@ -22,3 +22,5 @@ void tb_move_up(TextBuffer *tb);
 void tb_move_down(TextBuffer *tb);
 
 char *tb_to_string(const TextBuffer *tb);
+
+void tb_set_from_string(TextBuffer *tb, const char *s);

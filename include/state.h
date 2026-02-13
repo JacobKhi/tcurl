@@ -24,7 +24,7 @@ typedef enum {
     EDIT_FIELD_HEADERS = 2
 } EditField;
 
-typedef struct {
+typedef struct HttpResponse {
     long status;
     char *body; 
     char *body_view;
@@ -41,6 +41,8 @@ typedef enum {
     HTTP_DELETE,
     HTTP_METHOD_COUNT
 } HttpMethod;
+
+typedef struct History History;
 
 typedef struct {
     int running;
@@ -64,6 +66,8 @@ typedef struct {
     int response_scroll;
 
     HttpMethod method;
+
+    History *history;
 } AppState;
 
 void app_state_init(AppState *s);

@@ -1,6 +1,7 @@
 #include <ncurses.h>
 #include <stdio.h>
 #include <string.h>
+#include "core/history.h"
 #include "ui/draw.h"
 
 static const char *mode_label(Mode m) {
@@ -53,23 +54,33 @@ static void draw_boxed_window(WINDOW *w, const char *title, int focused) {
 }
 
 static void draw_history_content(WINDOW *w, const AppState *state) {
-    int h, wdt;
-    getmaxyx(w, h, wdt);
-    (void)wdt;
+    int h, wd;
+    getmaxyx(w, h, wd);
+    (void)wd;
 
-    int max_items = h - 2;
-    if (max_items <= 0) return;
+    if (!state->history) {
+        wnoutrefresh(w);
+        return;
+    }
 
-    for (int i = 0; i < max_items; i++) {
-        int idx = i; // fake items: Item 0..N
+    int max = h - 2;
+    for (int i = 0; i < max && i < state->history->count; i++) {
+        const HistoryItem *it = &state->history->items[i];
 
-        if (idx == state->history_selected) {
+        if (i == state->history_selected)
             wattron(w, A_REVERSE);
-            mvwprintw(w, 1 + i, 2, "Item %d", idx);
+
+        mvwprintw(
+            w, 1 + i, 2,
+            "%s %s",
+            (it->method == HTTP_GET) ? "GET" :
+            (it->method == HTTP_POST) ? "POST" :
+            (it->method == HTTP_PUT) ? "PUT" : "DEL",
+            it->url ? it->url : ""
+        );
+
+        if (i == state->history_selected)
             wattroff(w, A_REVERSE);
-        } else {
-            mvwprintw(w, 1 + i, 2, "Item %d", idx);
-        }
     }
 
     wnoutrefresh(w);

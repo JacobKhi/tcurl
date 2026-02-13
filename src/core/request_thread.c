@@ -1,6 +1,7 @@
 #include "core/request_thread.h"
 #include "state.h"
 #include "core/http.h"
+#include "core/history.h"
 #include "core/textbuf.h"
 #include "core/format.h"
 #include <stdlib.h>
@@ -48,6 +49,17 @@ void *request_thread(void *arg) {
             s->response.body_view = strdup(s->response.body);
             s->response.is_json = 0;
         }
+    }
+
+    if (s->history) {
+        history_push(
+            s->history,
+            s->method,
+            s->url,
+            &s->body,
+            &s->headers,
+            &s->response
+        );
     }
 
     s->is_request_in_flight = 0;
