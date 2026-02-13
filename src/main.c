@@ -25,6 +25,7 @@ int main(void) {
     keypad(stdscr, TRUE);
     curs_set(0);
     timeout(100);
+    ui_draw_init_theme(&state);
 
     curl_global_init(CURL_GLOBAL_DEFAULT);
 

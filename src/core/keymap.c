@@ -1,7 +1,12 @@
 #include "core/keymap.h"
+#include <ncurses.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+
+#ifndef KEY_SENTER
+#define KEY_SENTER 548
+#endif
 
 static void keymap_clear(Keymap *km) {
     for (int m = 0; m < MODE_COUNT; m++) {
@@ -42,6 +47,8 @@ static int keycode_from_token(char *tok) {
 
     if (strcmp(tok, "esc") == 0) return 27;
     if (strcmp(tok, "tab") == 0) return 9;
+    if (strcmp(tok, "enter") == 0) return KEY_ENTER;
+    if (strcmp(tok, "s-enter") == 0) return KEY_SENTER;
 
     if (strlen(tok) == 1) return (unsigned char)tok[0];
 
@@ -102,5 +109,23 @@ Action keymap_resolve(const Keymap *km, Mode mode, int keycode) {
     if (!km) return ACT_NONE;
     if (mode < 0 || mode >= MODE_COUNT) return ACT_NONE;
     if (keycode < 0 || keycode >= KEYMAP_MAX_KEYCODE) return ACT_NONE;
-    return km->table[mode][keycode];
+
+    Action a = km->table[mode][keycode];
+    if (a != ACT_NONE) return a;
+
+    if (keycode == '\n' || keycode == '\r') {
+        if (KEY_ENTER >= 0 && KEY_ENTER < KEYMAP_MAX_KEYCODE) {
+            a = km->table[mode][KEY_ENTER];
+            if (a != ACT_NONE) return a;
+        }
+    }
+
+    if (keycode == KEY_ENTER) {
+        a = km->table[mode]['\n'];
+        if (a != ACT_NONE) return a;
+        a = km->table[mode]['\r'];
+        if (a != ACT_NONE) return a;
+    }
+
+    return ACT_NONE;
 }

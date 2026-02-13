@@ -1,7 +1,10 @@
 #pragma once
 #include "core/textbuf.h"
+#include "core/env.h"
+#include "core/layout.h"
 
 #define URL_MAX 1024
+#define PROMPT_MAX 256
 
 typedef enum {
     MODE_NORMAL = 0,
@@ -23,6 +26,17 @@ typedef enum {
     EDIT_FIELD_BODY = 1,
     EDIT_FIELD_HEADERS = 2
 } EditField;
+
+typedef enum {
+    SEARCH_TARGET_HISTORY = 0,
+    SEARCH_TARGET_RESPONSE = 1
+} SearchTarget;
+
+typedef enum {
+    PROMPT_NONE = 0,
+    PROMPT_COMMAND = 1,
+    PROMPT_SEARCH = 2
+} PromptKind;
 
 typedef struct HttpResponse {
     long status;
@@ -49,6 +63,14 @@ typedef struct {
     Mode mode;
 
     Panel focused_panel;
+    LayoutProfile ui_layout_profile;
+    LayoutSlot quad_history_slot;
+    LayoutSlot quad_editor_slot;
+    LayoutSlot quad_response_slot;
+    LayoutSizing ui_layout_sizing;
+    LayoutTheme ui_theme;
+    ThemeCatalog theme_catalog;
+    char active_theme_preset[64];
 
     int history_selected;
 
@@ -68,6 +90,29 @@ typedef struct {
     HttpMethod method;
 
     History *history;
+    int history_max_entries;
+    char *history_path;
+
+    EnvStore envs;
+    char **header_suggestions;
+    int header_suggestions_count;
+
+    int headers_ac_row;
+    int headers_ac_next_match;
+    char *headers_ac_seed;
+
+    PromptKind prompt_kind;
+    char prompt_input[PROMPT_MAX];
+    int prompt_len;
+    int prompt_cursor;
+
+    char search_query[PROMPT_MAX];
+    SearchTarget search_target;
+    int search_match_index;
+    int search_not_found;
+
+    int body_scroll;
+    int headers_scroll;
 } AppState;
 
 void app_state_init(AppState *s);

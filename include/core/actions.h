@@ -15,7 +15,11 @@ typedef enum {
     ACT_SEND_REQUEST,
     ACT_TOGGLE_EDITOR_FIELD,
     ACT_CYCLE_METHOD,
+    ACT_CYCLE_ENVIRONMENT,
     ACT_HISTORY_LOAD,
+    ACT_HISTORY_REPLAY,
+    ACT_SEARCH_NEXT,
+    ACT_SEARCH_PREV,
 
     ACT_COUNT
 } Action;
@@ -23,3 +27,4 @@ typedef enum {
 Action action_from_string(const char *name);
 
 const char *action_to_string(Action a);
+const char *action_description(Action a);
