@@ -30,6 +30,16 @@ static const char *panel_label(Panel p) {
     }
 }
 
+static const char *method_label(HttpMethod m) {
+    switch (m) {
+        case HTTP_GET: return "GET";
+        case HTTP_POST: return "POST";
+        case HTTP_PUT: return "PUT";
+        case HTTP_DELETE: return "DELETE";
+        default: return "?";
+    }
+}
+
 static void draw_boxed_window(WINDOW *w, const char *title, int focused) {
     int h, wd;
     getmaxyx(w, h, wd);
@@ -229,8 +239,10 @@ static void draw_ui(const AppState *state) {
     erase();
     box(stdscr, 0, 0);
 
-    const char *top = " tcurl ";
+    char top[256];
+    snprintf(top, sizeof(top), " tcurl | %s ", method_label(state->method));
     mvaddnstr(0, 2, top, cols - 4);
+
 
     char status[256];
     snprintf(status, sizeof(status), " %s | focus=%s | history_selected=%d ",

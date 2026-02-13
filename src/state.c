@@ -19,6 +19,8 @@ void app_state_init(AppState *s) {
     s->response.status = 0;
     s->response.body = NULL;
     s->is_request_in_flight = 0;
+
+    s->method = HTTP_GET;
 }
 
 void app_state_destroy(AppState *s) {

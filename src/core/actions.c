@@ -18,6 +18,7 @@ static const ActionEntry ACTIONS[] = {
     {"enter_search", ACT_ENTER_SEARCH},
     {"send_request", ACT_SEND_REQUEST},
     {"toggle_editor_field", ACT_TOGGLE_EDITOR_FIELD},
+    {"cycle_method", ACT_CYCLE_METHOD},
 };
 
 Action action_from_string(const char *name) {

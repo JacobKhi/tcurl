@@ -23,7 +23,7 @@ static size_t write_cb(void *ptr, size_t size, size_t nmemb, void *userdata) {
     return total;
 }
 
-int http_get(const char *url, HttpResponse *out) {
+int http_request(const char *url, HttpMethod method, HttpResponse *out) {
     CURL *curl = curl_easy_init();
     if (!curl) return -1;
 
@@ -34,6 +34,27 @@ int http_get(const char *url, HttpResponse *out) {
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buf);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+
+    switch (method) {
+        case HTTP_GET:
+            curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
+            break;
+        case HTTP_POST:
+            curl_easy_setopt(curl, CURLOPT_POST, 1L);
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "");
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, 0L);
+            break;
+        case HTTP_PUT:
+            curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "");
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, 0L);
+            break;
+        case HTTP_DELETE:
+            curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+            break;
+        default:
+            break;
+    }
 
     CURLcode res = curl_easy_perform(curl);
     if (res != CURLE_OK) {

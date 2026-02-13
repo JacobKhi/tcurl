@@ -28,6 +28,14 @@ typedef struct {
     char *body;
 } HttpResponse;
 
+typedef enum {
+    HTTP_GET = 0,
+    HTTP_POST,
+    HTTP_PUT,
+    HTTP_DELETE,
+    HTTP_METHOD_COUNT
+} HttpMethod;
+
 typedef struct {
     int running;
     Mode mode;
@@ -46,6 +54,8 @@ typedef struct {
 
     HttpResponse response;
     int is_request_in_flight;
+
+    HttpMethod method;
 } AppState;
 
 void app_state_init(AppState *s);

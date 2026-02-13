@@ -47,6 +47,10 @@ void dispatch_action(AppState *s, Action a) {
             }
             break;
 
+        case ACT_CYCLE_METHOD:
+            s->method = (HttpMethod)((s->method + 1) % HTTP_METHOD_COUNT);
+            break;
+
         default:
             break;
     }
