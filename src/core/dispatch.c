@@ -365,6 +365,10 @@ static int key_name_from_code(int code, char *out, size_t out_sz) {
     if (code == 9) return snprintf(out, out_sz, "tab") > 0;
     if (code == KEY_ENTER) return snprintf(out, out_sz, "enter") > 0;
     if (code == KEY_SENTER) return snprintf(out, out_sz, "s-enter") > 0;
+    if (code == KEY_LEFT) return snprintf(out, out_sz, "left") > 0;
+    if (code == KEY_RIGHT) return snprintf(out, out_sz, "right") > 0;
+    if (code == KEY_UP) return snprintf(out, out_sz, "up") > 0;
+    if (code == KEY_DOWN) return snprintf(out, out_sz, "down") > 0;
     if (code == ' ') return snprintf(out, out_sz, "space") > 0;
     if (code >= 32 && code <= 126) return snprintf(out, out_sz, "%c", (char)code) > 0;
     return 0;
@@ -616,6 +620,8 @@ static char *build_help_text(const Keymap *km) {
     if (!appendf(&buf, &len, &cap, "  :find <term>  Run contextual search immediately\n")) goto fail;
     if (!appendf(&buf, &len, &cap, "  :set [search_target|max_entries] ...  Update runtime settings\n")) goto fail;
     if (!appendf(&buf, &len, &cap, "  :clear! | :ch!  Clear history (memory + storage)\n\n")) goto fail;
+    if (!appendf(&buf, &len, &cap, "Navigation:\n")) goto fail;
+    if (!appendf(&buf, &len, &cap, "  Left/Right/Up/Down mirror h/l/k/j in normal mode\n\n")) goto fail;
     if (!appendf(&buf, &len, &cap, "Key bindings:\n")) goto fail;
 
     for (int m = 0; m < MODE_COUNT; m++) {
@@ -900,6 +906,12 @@ void dispatch_action(AppState *s, Action a) {
             break;
 
         case ACT_HISTORY_LOAD: {
+            if (s->focused_panel == PANEL_EDITOR) {
+                s->mode = MODE_INSERT;
+                clear_prompt(s);
+                break;
+            }
+
             if (s->focused_panel != PANEL_HISTORY) break;
             if (!s->history) break;
 
