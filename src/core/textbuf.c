@@ -1,6 +1,7 @@
 #include "core/textbuf.h"
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 static char *dup_str(const char *s) {
     size_t n = strlen(s);
@@ -176,6 +177,128 @@ void tb_move_down(TextBuffer *tb) {
         int len = line_len(tb, tb->cursor_row);
         if (tb->cursor_col > len) tb->cursor_col = len;
     }
+}
+
+void tb_move_line_start(TextBuffer *tb) {
+    if (!tb) return;
+    tb->cursor_col = 0;
+}
+
+void tb_move_line_end(TextBuffer *tb) {
+    if (!tb) return;
+    tb->cursor_col = line_len(tb, tb->cursor_row);
+}
+
+void tb_move_word_left(TextBuffer *tb) {
+    if (!tb) return;
+    
+    // If at start of line, wrap to end of previous line
+    if (tb->cursor_col == 0) {
+        if (tb->cursor_row > 0) {
+            tb->cursor_row--;
+            tb->cursor_col = line_len(tb, tb->cursor_row);
+        }
+        return;
+    }
+    
+    char *line = tb->lines[tb->cursor_row];
+    int pos = tb->cursor_col - 1;
+    
+    while (pos >= 0 && (line[pos] == ' ' || line[pos] == '\t')) {
+        pos--;
+    }
+    
+    if (pos >= 0 && (isalnum((unsigned char)line[pos]) || line[pos] == '_')) {
+        while (pos >= 0 && (isalnum((unsigned char)line[pos]) || line[pos] == '_')) {
+            pos--;
+        }
+    }
+    else if (pos >= 0) {
+        while (pos >= 0 && !isalnum((unsigned char)line[pos]) && 
+               line[pos] != '_' && line[pos] != ' ' && line[pos] != '\t') {
+            pos--;
+        }
+    }
+    
+    tb->cursor_col = pos + 1;
+}
+
+void tb_move_word_right(TextBuffer *tb) {
+    if (!tb) return;
+    
+    char *line = tb->lines[tb->cursor_row];
+    int len = line_len(tb, tb->cursor_row);
+    
+    // If at end of line, wrap to start of next line
+    if (tb->cursor_col >= len) {
+        if (tb->cursor_row < tb->line_count - 1) {
+            tb->cursor_row++;
+            tb->cursor_col = 0;
+        }
+        return;
+    }
+    
+    int pos = tb->cursor_col;
+    
+    if (isalnum((unsigned char)line[pos]) || line[pos] == '_') {
+        while (pos < len && (isalnum((unsigned char)line[pos]) || line[pos] == '_')) {
+            pos++;
+        }
+    }
+    else if (line[pos] != ' ' && line[pos] != '\t') {
+        while (pos < len && !isalnum((unsigned char)line[pos]) && 
+               line[pos] != '_' && line[pos] != ' ' && line[pos] != '\t') {
+            pos++;
+        }
+    }
+    
+    while (pos < len && (line[pos] == ' ' || line[pos] == '\t')) {
+        pos++;
+    }
+    
+    tb->cursor_col = pos;
+}
+
+void tb_delete_char(TextBuffer *tb) {
+    if (!tb) return;
+    
+    char *line = tb->lines[tb->cursor_row];
+    int len = (int)strlen(line);
+    
+    // If at end of line, merge with next line
+    if (tb->cursor_col >= len) {
+        if (tb->cursor_row < tb->line_count - 1) {
+            int cur = tb->cursor_row;
+            int next = cur + 1;
+            
+            char *cur_line = tb->lines[cur];
+            char *next_line = tb->lines[next];
+            
+            int cur_len = (int)strlen(cur_line);
+            int next_len = (int)strlen(next_line);
+            
+            char *merged = (char *)realloc(cur_line, (size_t)(cur_len + next_len + 1));
+            if (!merged) return;
+            
+            memcpy(merged + cur_len, next_line, (size_t)next_len + 1);
+            tb->lines[cur] = merged;
+            
+            free(next_line);
+            
+            for (int i = next; i < tb->line_count - 1; i++) {
+                tb->lines[i] = tb->lines[i + 1];
+            }
+            tb->line_count--;
+        }
+        return;
+    }
+    
+    // Delete character at cursor position
+    memmove(&line[tb->cursor_col], &line[tb->cursor_col + 1], 
+            (size_t)(len - tb->cursor_col));
+    
+    char *nl = (char *)realloc(line, (size_t)len);
+    if (nl) tb->lines[tb->cursor_row] = nl;
 }
 
 char *tb_to_string(const TextBuffer *tb) {

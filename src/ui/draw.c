@@ -439,14 +439,6 @@ static void draw_textbuffer_area(
         int y = y_first + i;
         int row = *scroll + i;
 
-        if (active && row == tb->cursor_row) {
-            if (g_theme_colors) wattron(w, COLOR_PAIR(PAIR_TAB_ACTIVE));
-            else wattron(w, A_REVERSE);
-            mvwhline(w, y, x_left, ' ', clip);
-            if (g_theme_colors) wattroff(w, COLOR_PAIR(PAIR_TAB_ACTIVE));
-            else wattroff(w, A_REVERSE);
-        }
-
         if (gutter > 0 && row < tb->line_count) {
             char ln[16];
             snprintf(ln, sizeof(ln), "%3d ", row + 1);
@@ -463,7 +455,26 @@ static void draw_textbuffer_area(
             int line_len = (int)strlen(line);
             if (start_col > line_len) start_col = line_len;
 
-            mvwaddnstr(w, y, text_left, line + start_col, text_clip);
+            if (active && row == tb->cursor_row) {
+                if (active_hscroll > 0 && text_clip > 0) {
+                    mvwaddch(w, y, text_left, '<');
+                }
+                if (line_len > active_hscroll + text_clip && text_clip > 1) {
+                    mvwaddch(w, y, text_left + text_clip - 1, '>');
+                }
+                
+                int display_start = start_col;
+                int display_width = text_clip;
+                if (active_hscroll > 0) {
+                    display_start++;
+                    display_width--;
+                    mvwaddnstr(w, y, text_left + 1, line + display_start, display_width - 1);
+                } else {
+                    mvwaddnstr(w, y, text_left, line + start_col, text_clip);
+                }
+            } else {
+                mvwaddnstr(w, y, text_left, line + start_col, text_clip);
+            }
         }
 
         if (active && row == tb->cursor_row && out_cursor_y && out_cursor_x) {
@@ -486,15 +497,7 @@ static void draw_editor_split_content(WINDOW *w, AppState *state, int *out_cy, i
     const int content_first_row = 4;
     const int content_last_row = h - 2;
 
-    if (state->active_field == EDIT_FIELD_URL) {
-        if (g_theme_colors) wattron(w, COLOR_PAIR(PAIR_TAB_ACTIVE));
-        else wattron(w, A_REVERSE);
-    }
     mvwaddnstr(w, url_label_row, 2, i18n_get(state->ui_language, I18N_URL_LABEL), wd - 4);
-    if (state->active_field == EDIT_FIELD_URL) {
-        if (g_theme_colors) wattroff(w, COLOR_PAIR(PAIR_TAB_ACTIVE));
-        else wattroff(w, A_REVERSE);
-    }
 
     int url_clip = wd - 4;
     if (url_clip < 0) url_clip = 0;
@@ -503,15 +506,21 @@ static void draw_editor_split_content(WINDOW *w, AppState *state, int *out_cy, i
         url_hscroll = state->url_cursor - url_clip + 1;
     }
 
-    if (state->active_field == EDIT_FIELD_URL) {
-        if (g_theme_colors) wattron(w, COLOR_PAIR(PAIR_TAB_ACTIVE));
-        else wattron(w, A_REVERSE);
-        mvwhline(w, url_value_row, 2, ' ', url_clip);
+    if (url_hscroll > 0 && url_clip > 0) {
+        mvwaddch(w, url_value_row, 2, '<');
     }
-    mvwaddnstr(w, url_value_row, 2, state->url + url_hscroll, url_clip);
-    if (state->active_field == EDIT_FIELD_URL) {
-        if (g_theme_colors) wattroff(w, COLOR_PAIR(PAIR_TAB_ACTIVE));
-        else wattroff(w, A_REVERSE);
+    if (state->url_len > url_hscroll + url_clip && url_clip > 1) {
+        mvwaddch(w, url_value_row, 2 + url_clip - 1, '>');
+    }
+    
+    int display_start = url_hscroll;
+    int display_width = url_clip;
+    if (url_hscroll > 0) {
+        display_start++;
+        display_width--;
+        mvwaddnstr(w, url_value_row, 3, state->url + display_start, display_width - 1);
+    } else {
+        mvwaddnstr(w, url_value_row, 2, state->url + url_hscroll, url_clip);
     }
 
     if (content_first_row > content_last_row || wd < 12) {
@@ -647,12 +656,7 @@ static void draw_editor_tabs_content(WINDOW *w, AppState *state, int *out_cy, in
             url_hscroll = state->url_cursor - clip + 1;
         }
 
-        if (g_theme_colors) wattron(w, COLOR_PAIR(PAIR_TAB_ACTIVE));
-        else wattron(w, A_REVERSE);
-        mvwhline(w, line_y, 2, ' ', clip);
         mvwaddnstr(w, line_y, 2, state->url + url_hscroll, clip);
-        if (g_theme_colors) wattroff(w, COLOR_PAIR(PAIR_TAB_ACTIVE));
-        else wattroff(w, A_REVERSE);
 
         cy = line_y;
         cx = 2 + (state->url_cursor - url_hscroll);
@@ -792,10 +796,40 @@ void ui_draw(AppState *state) {
     else attroff(A_BOLD);
 
     if (state->mode == MODE_COMMAND || state->mode == MODE_SEARCH) {
-        char prompt[512];
         char prefix = (state->mode == MODE_COMMAND) ? ':' : '/';
-        snprintf(prompt, sizeof(prompt), " %c%s", prefix, state->prompt_input);
-        mvaddnstr(rows - 1, 2, prompt, cols - 4);
+        int prompt_space = cols - 4;
+        int prefix_len = 2;  // " :" or " /"
+        int text_space = prompt_space - prefix_len;
+        
+        if (text_space > 0) {
+            int prompt_hscroll = 0;
+            if (state->prompt_cursor >= text_space) {
+                prompt_hscroll = state->prompt_cursor - text_space + 1;
+            }
+            
+            mvaddch(rows - 1, 2, ' ');
+            mvaddch(rows - 1, 3, prefix);
+            
+            int display_x = 4;
+            int display_width = text_space;
+            int display_start = prompt_hscroll;
+            
+            if (prompt_hscroll > 0 && text_space > 0) {
+                mvaddch(rows - 1, display_x, '<');
+                display_x++;
+                display_width--;
+                display_start++;
+            }
+            
+            if (state->prompt_len > prompt_hscroll + text_space && text_space > 1) {
+                mvaddch(rows - 1, 4 + text_space - 1, '>');
+                display_width--;
+            }
+            
+            if (display_width > 0) {
+                mvaddnstr(rows - 1, display_x, state->prompt_input + display_start, display_width);
+            }
+        }
     } else {
         char status[512];
         int status_warn = 0;

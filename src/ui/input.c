@@ -7,6 +7,28 @@
 #include "core/actions.h"
 #include "core/dispatch.h"
 
+#define CTRL(x) ((x) & 0x1f)
+
+// Multiple key codes for Ctrl+Arrow (varies by terminal)
+// Also support Ctrl+B/Ctrl+F as portable alternatives  
+static int is_word_left_key(int ch) {
+    if (ch == 546 || ch == 547 || ch == 545 || ch == 560) return 1;
+    if (ch == CTRL('b')) return 1;
+    #ifdef kLFT5
+    if (ch == kLFT5) return 1;
+    #endif
+    return 0;
+}
+
+static int is_word_right_key(int ch) {
+    if (ch == 561 || ch == 562 || ch == 575) return 1;
+    if (ch == CTRL('f')) return 1;
+    #ifdef kRIT5
+    if (ch == kRIT5) return 1;
+    #endif
+    return 0;
+}
+
 static void insert_tab_in_url(AppState *s) {
     const int tab_spaces = 4;
     if (!s) return;
@@ -41,8 +63,49 @@ static void handle_url_insert(AppState *s, int ch) {
         return;
     }
 
+    if (ch == KEY_DC) {  // Delete key
+        if (s->url_cursor < s->url_len) {
+            memmove(&s->url[s->url_cursor],
+                    &s->url[s->url_cursor + 1],
+                    (size_t)(s->url_len - s->url_cursor));
+            s->url_len--;
+        }
+        return;
+    }
+
+    if (ch == KEY_HOME || ch == CTRL('a')) { s->url_cursor = 0; return; }
+    if (ch == KEY_END || ch == CTRL('e'))  { s->url_cursor = s->url_len; return; }
+
     if (ch == KEY_LEFT)  { if (s->url_cursor > 0) s->url_cursor--; return; }
     if (ch == KEY_RIGHT) { if (s->url_cursor < s->url_len) s->url_cursor++; return; }
+
+    if (is_word_left_key(ch)) {
+        if (s->url_cursor == 0) return;
+        int pos = s->url_cursor - 1;
+        while (pos >= 0 && (s->url[pos] == ' ' || s->url[pos] == '\t')) pos--;
+        if (pos >= 0 && (isalnum((unsigned char)s->url[pos]) || s->url[pos] == '_')) {
+            while (pos >= 0 && (isalnum((unsigned char)s->url[pos]) || s->url[pos] == '_')) pos--;
+        } else if (pos >= 0) {
+            while (pos >= 0 && !isalnum((unsigned char)s->url[pos]) && 
+                   s->url[pos] != '_' && s->url[pos] != ' ' && s->url[pos] != '\t') pos--;
+        }
+        s->url_cursor = pos + 1;
+        return;
+    }
+
+    if (is_word_right_key(ch)) {
+        if (s->url_cursor >= s->url_len) return;
+        int pos = s->url_cursor;
+        if (isalnum((unsigned char)s->url[pos]) || s->url[pos] == '_') {
+            while (pos < s->url_len && (isalnum((unsigned char)s->url[pos]) || s->url[pos] == '_')) pos++;
+        } else if (s->url[pos] != ' ' && s->url[pos] != '\t') {
+            while (pos < s->url_len && !isalnum((unsigned char)s->url[pos]) && 
+                   s->url[pos] != '_' && s->url[pos] != ' ' && s->url[pos] != '\t') pos++;
+        }
+        while (pos < s->url_len && (s->url[pos] == ' ' || s->url[pos] == '\t')) pos++;
+        s->url_cursor = pos;
+        return;
+    }
 
     if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) return;
     if (ch == '\t' || ch == 9) {
@@ -64,10 +127,15 @@ static void handle_url_insert(AppState *s, int ch) {
 
 static void handle_textbuf_insert(TextBuffer *tb, int ch) {
     if (ch == KEY_BACKSPACE || ch == 127 || ch == 8) { tb_backspace(tb); return; }
+    if (ch == KEY_DC) { tb_delete_char(tb); return; }
+    if (ch == KEY_HOME || ch == CTRL('a')) { tb_move_line_start(tb); return; }
+    if (ch == KEY_END || ch == CTRL('e'))  { tb_move_line_end(tb); return; }
     if (ch == KEY_LEFT)  { tb_move_left(tb); return; }
     if (ch == KEY_RIGHT) { tb_move_right(tb); return; }
     if (ch == KEY_UP)    { tb_move_up(tb); return; }
     if (ch == KEY_DOWN)  { tb_move_down(tb); return; }
+    if (is_word_left_key(ch))  { tb_move_word_left(tb); return; }
+    if (is_word_right_key(ch)) { tb_move_word_right(tb); return; }
     if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) { tb_newline(tb); return; }
     if (ch == '\t' || ch == 9) {
         tb_insert_char(tb, ' ');
@@ -269,6 +337,19 @@ static void handle_command_mode_key(AppState *s, Keymap *km, int ch) {
         return;
     }
 
+    if (ch == KEY_DC) {  // Delete key
+        if (s->prompt_cursor < s->prompt_len) {
+            memmove(&s->prompt_input[s->prompt_cursor],
+                    &s->prompt_input[s->prompt_cursor + 1],
+                    (size_t)(s->prompt_len - s->prompt_cursor));
+            s->prompt_len--;
+        }
+        return;
+    }
+
+    if (ch == KEY_HOME || ch == CTRL('a')) { s->prompt_cursor = 0; return; }
+    if (ch == KEY_END || ch == CTRL('e'))  { s->prompt_cursor = s->prompt_len; return; }
+
     if (ch == KEY_LEFT) {
         if (s->prompt_cursor > 0) s->prompt_cursor--;
         return;
@@ -315,6 +396,19 @@ static void handle_search_mode_key(AppState *s, int ch) {
         prompt_backspace(s);
         return;
     }
+
+    if (ch == KEY_DC) {  // Delete key
+        if (s->prompt_cursor < s->prompt_len) {
+            memmove(&s->prompt_input[s->prompt_cursor],
+                    &s->prompt_input[s->prompt_cursor + 1],
+                    (size_t)(s->prompt_len - s->prompt_cursor));
+            s->prompt_len--;
+        }
+        return;
+    }
+
+    if (ch == KEY_HOME || ch == CTRL('a')) { s->prompt_cursor = 0; return; }
+    if (ch == KEY_END || ch == CTRL('e'))  { s->prompt_cursor = s->prompt_len; return; }
 
     if (ch == KEY_LEFT) {
         if (s->prompt_cursor > 0) s->prompt_cursor--;
