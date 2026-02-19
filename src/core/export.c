@@ -1,5 +1,6 @@
 #include "core/export.h"
 #include "core/cjson_compat.h"
+#include "core/utils.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -42,30 +43,6 @@ static char *shell_quote_single(const char *in) {
     return out;
 }
 
-static int appendf(char **buf, size_t *len, size_t *cap, const char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    int need = vsnprintf(NULL, 0, fmt, ap);
-    va_end(ap);
-    if (need < 0) return 0;
-
-    size_t req = *len + (size_t)need + 1;
-    if (*cap < req) {
-        size_t new_cap = *cap ? *cap : 256;
-        while (new_cap < req) new_cap *= 2;
-        char *n = realloc(*buf, new_cap);
-        if (!n) return 0;
-        *buf = n;
-        *cap = new_cap;
-    }
-
-    va_start(ap, fmt);
-    vsnprintf(*buf + *len, *cap - *len, fmt, ap);
-    va_end(ap);
-    *len += (size_t)need;
-    return 1;
-}
-
 char *export_as_curl(const RequestSnapshot *req) {
     if (!req) return NULL;
 
@@ -74,7 +51,7 @@ char *export_as_curl(const RequestSnapshot *req) {
 
     char *buf = NULL;
     size_t len = 0, cap = 0;
-    if (!appendf(&buf, &len, &cap, "curl -X %s %s", method_name(req->method), url_q)) {
+    if (!str_appendf(&buf, &len, &cap, "curl -X %s %s", method_name(req->method), url_q)) {
         free(url_q);
         free(buf);
         return NULL;
@@ -97,7 +74,7 @@ char *export_as_curl(const RequestSnapshot *req) {
             free(buf);
             return NULL;
         }
-        if (!appendf(&buf, &len, &cap, " -H %s", h_q)) {
+        if (!str_appendf(&buf, &len, &cap, " -H %s", h_q)) {
             free(h_q);
             free(headers);
             free(buf);
@@ -114,7 +91,7 @@ char *export_as_curl(const RequestSnapshot *req) {
             free(buf);
             return NULL;
         }
-        if (!appendf(&buf, &len, &cap, " --data-binary %s", body_q)) {
+        if (!str_appendf(&buf, &len, &cap, " --data-binary %s", body_q)) {
             free(body_q);
             free(buf);
             return NULL;
@@ -122,7 +99,7 @@ char *export_as_curl(const RequestSnapshot *req) {
         free(body_q);
     }
 
-    if (!appendf(&buf, &len, &cap, "\n")) {
+    if (!str_appendf(&buf, &len, &cap, "\n")) {
         free(buf);
         return NULL;
     }
