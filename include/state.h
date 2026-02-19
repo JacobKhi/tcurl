@@ -4,6 +4,7 @@
 #include "core/env.h"
 #include "core/layout.h"
 #include "core/paths.h"
+#include "core/i18n.h"
 
 #define URL_MAX 1024
 #define PROMPT_MAX 256
@@ -74,6 +75,8 @@ typedef struct {
     LayoutSizing ui_layout_sizing;
     LayoutTheme ui_theme;
     int ui_show_footer_hint;
+    UiLanguageSetting ui_language_setting;
+    UiLanguage ui_language;
     ThemeCatalog theme_catalog;
     char active_theme_preset[64];
     AppPaths paths;
