@@ -10,6 +10,7 @@
 #include "core/request_snapshot.h"
 #include "core/export.h"
 #include "core/auth.h"
+#include "core/utils.h"
 #include "ui/draw.h"
 #include <ncurses.h>
 #include <ctype.h>
@@ -321,41 +322,17 @@ static void response_set_text(AppState *s, const char *text) {
 
 static void response_set_error(AppState *s, const char *err) {
     response_reset_content(s);
-    s->response.error = strdup(err ? err : "Unknown error");
+    s->response.error = strdup(err ? err : i18n_get(s->ui_language, I18N_UNKNOWN_ERROR));
     s->focused_panel = PANEL_RESPONSE;
 }
 
-static int appendf(char **buf, size_t *len, size_t *cap, const char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    int need = vsnprintf(NULL, 0, fmt, ap);
-    va_end(ap);
-    if (need < 0) return 0;
-
-    size_t req = *len + (size_t)need + 1;
-    if (*cap < req) {
-        size_t new_cap = *cap ? *cap : 256;
-        while (new_cap < req) new_cap *= 2;
-        char *n = realloc(*buf, new_cap);
-        if (!n) return 0;
-        *buf = n;
-        *cap = new_cap;
-    }
-
-    va_start(ap, fmt);
-    vsnprintf(*buf + *len, *cap - *len, fmt, ap);
-    va_end(ap);
-    *len += (size_t)need;
-    return 1;
-}
-
-static const char *mode_name(Mode m) {
+static const char *mode_name(Mode m, UiLanguage lang) {
     switch (m) {
-        case MODE_NORMAL: return "normal";
-        case MODE_INSERT: return "insert";
-        case MODE_COMMAND: return "command";
-        case MODE_SEARCH: return "search";
-        default: return "unknown";
+        case MODE_NORMAL: return i18n_get(lang, I18N_MODE_NORMAL_LC);
+        case MODE_INSERT: return i18n_get(lang, I18N_MODE_INSERT_LC);
+        case MODE_COMMAND: return i18n_get(lang, I18N_MODE_COMMAND_LC);
+        case MODE_SEARCH: return i18n_get(lang, I18N_MODE_SEARCH_LC);
+        default: return i18n_get(lang, I18N_MODE_UNKNOWN_LC);
     }
 }
 
@@ -376,13 +353,13 @@ static int key_name_from_code(int code, char *out, size_t out_sz) {
 
 static void command_apply_theme(AppState *s, const char *preset, int save) {
     if (!preset || !preset[0]) {
-        response_set_error(s, "Usage: :theme <name> [-s|--save]");
+        response_set_error(s, i18n_get(s->ui_language, I18N_USAGE_THEME_NAME_SAVE));
         return;
     }
 
     LayoutTheme themed;
     if (layout_theme_catalog_apply(&s->theme_catalog, preset, &themed) != 0) {
-        response_set_error(s, "Unknown theme preset. Use :theme list");
+        response_set_error(s, i18n_get(s->ui_language, I18N_UNKNOWN_THEME_PRESET));
         return;
     }
 
@@ -402,17 +379,24 @@ static void command_apply_theme(AppState *s, const char *preset, int save) {
             &s->ui_layout_sizing,
             &s->ui_theme,
             s->ui_show_footer_hint,
+            s->ui_language_setting,
             s->active_theme_preset
         );
 
         char msg[256];
         if (rc == 0) {
-            snprintf(msg, sizeof(msg), "Theme '%s' applied and saved to %s", s->active_theme_preset, layout_path);
+            snprintf(
+                msg,
+                sizeof(msg),
+                i18n_get(s->ui_language, I18N_THEME_APPLIED_SAVED_FMT),
+                s->active_theme_preset,
+                layout_path
+            );
         } else {
             snprintf(
                 msg,
                 sizeof(msg),
-                "Theme '%s' applied for this session, but failed to save %s",
+                i18n_get(s->ui_language, I18N_THEME_APPLIED_SAVE_FAILED_FMT),
                 s->active_theme_preset,
                 layout_path
             );
@@ -422,14 +406,14 @@ static void command_apply_theme(AppState *s, const char *preset, int save) {
     }
 
     char msg[192];
-    snprintf(msg, sizeof(msg), "Theme '%s' applied for this session", s->active_theme_preset);
+    snprintf(msg, sizeof(msg), i18n_get(s->ui_language, I18N_THEME_APPLIED_SESSION_FMT), s->active_theme_preset);
     response_set_text(s, msg);
 }
 
 static void command_list_themes(AppState *s) {
     char *list = layout_theme_catalog_list_names(&s->theme_catalog);
     if (!list) {
-        response_set_error(s, "Out of memory listing themes");
+        response_set_error(s, i18n_get(s->ui_language, I18N_OOM_LISTING_THEMES));
         return;
     }
     response_set_text(s, list);
@@ -438,12 +422,12 @@ static void command_list_themes(AppState *s) {
 
 static void command_clear_history(AppState *s) {
     if (!s->history) {
-        response_set_error(s, "History is not initialized");
+        response_set_error(s, i18n_get(s->ui_language, I18N_HISTORY_NOT_INITIALIZED));
         return;
     }
 
     if (s->is_request_in_flight) {
-        response_set_error(s, "Cannot clear history while request is in flight");
+        response_set_error(s, i18n_get(s->ui_language, I18N_CANNOT_CLEAR_HISTORY_IN_FLIGHT));
         return;
     }
 
@@ -465,21 +449,21 @@ static void command_clear_history(AppState *s) {
     }
 
     if (rc == 0) {
-        response_set_text(s, "History cleared");
+        response_set_text(s, i18n_get(s->ui_language, I18N_HISTORY_CLEARED));
     } else {
-        response_set_text(s, "History cleared in memory, but failed to persist storage");
+        response_set_text(s, i18n_get(s->ui_language, I18N_HISTORY_CLEARED_SAVE_FAILED));
     }
 }
 
 static void command_export_request(AppState *s, const char *format) {
     if (!format || !format[0]) {
-        response_set_error(s, "Usage: :export curl|json");
+        response_set_error(s, i18n_get(s->ui_language, I18N_USAGE_EXPORT));
         return;
     }
 
     RequestSnapshot snap;
     if (request_snapshot_build_locked(s, &snap) != 0) {
-        response_set_error(s, "Out of memory creating export snapshot");
+        response_set_error(s, i18n_get(s->ui_language, I18N_OOM_EXPORT_SNAPSHOT));
         return;
     }
 
@@ -490,13 +474,13 @@ static void command_export_request(AppState *s, const char *format) {
         out = export_as_json(&snap);
     } else {
         request_snapshot_free(&snap);
-        response_set_error(s, "Unknown export format. Use curl or json");
+        response_set_error(s, i18n_get(s->ui_language, I18N_UNKNOWN_EXPORT_FORMAT));
         return;
     }
 
     request_snapshot_free(&snap);
     if (!out) {
-        response_set_error(s, "Export failed");
+        response_set_error(s, i18n_get(s->ui_language, I18N_EXPORT_FAILED));
         return;
     }
 
@@ -506,7 +490,7 @@ static void command_export_request(AppState *s, const char *format) {
 
 static void command_auth(AppState *s, const char *kind, const char *arg) {
     if (!kind || !*kind || !arg || !*arg) {
-        response_set_error(s, "Usage: :auth bearer <token> | :auth basic <user>:<pass>");
+        response_set_error(s, i18n_get(s->ui_language, I18N_USAGE_AUTH));
         return;
     }
 
@@ -516,14 +500,14 @@ static void command_auth(AppState *s, const char *kind, const char *arg) {
     } else if (strcmp(kind, "basic") == 0) {
         const char *sep = strchr(arg, ':');
         if (!sep) {
-            response_set_error(s, "Usage: :auth basic <user>:<pass>");
+            response_set_error(s, i18n_get(s->ui_language, I18N_USAGE_AUTH_BASIC));
             return;
         }
 
         size_t ulen = (size_t)(sep - arg);
         char *user = malloc(ulen + 1);
         if (!user) {
-            response_set_error(s, "Out of memory applying auth");
+            response_set_error(s, i18n_get(s->ui_language, I18N_OOM_APPLY_AUTH));
             return;
         }
         memcpy(user, arg, ulen);
@@ -532,17 +516,17 @@ static void command_auth(AppState *s, const char *kind, const char *arg) {
         rc = auth_apply_basic(&s->headers, user, pass);
         free(user);
     } else {
-        response_set_error(s, "Unknown auth kind. Use bearer or basic");
+        response_set_error(s, i18n_get(s->ui_language, I18N_UNKNOWN_AUTH_KIND));
         return;
     }
 
-    if (rc == 0) response_set_text(s, "Authorization header updated");
-    else response_set_error(s, "Failed to update Authorization header");
+    if (rc == 0) response_set_text(s, i18n_get(s->ui_language, I18N_AUTH_UPDATED));
+    else response_set_error(s, i18n_get(s->ui_language, I18N_AUTH_UPDATE_FAILED));
 }
 
 static void command_find(AppState *s, const char *query) {
     if (!query || !*query) {
-        response_set_error(s, "Usage: :find <term>");
+        response_set_error(s, i18n_get(s->ui_language, I18N_USAGE_FIND));
         return;
     }
     s->search_target = effective_search_target(s);
@@ -558,7 +542,7 @@ static void command_set(AppState *s, const char *key, const char *value) {
         snprintf(
             msg,
             sizeof(msg),
-            "Settings:\n- search_target=%s\n- history_max_entries=%d",
+            i18n_get(s->ui_language, I18N_SETTINGS_FMT),
             mode,
             s->history_max_entries
         );
@@ -568,79 +552,239 @@ static void command_set(AppState *s, const char *key, const char *value) {
 
     if (strcmp(key, "search_target") == 0) {
         if (!value) {
-            response_set_error(s, "Usage: :set search_target auto|history|response");
+            response_set_error(s, i18n_get(s->ui_language, I18N_USAGE_SET_SEARCH_TARGET));
             return;
         }
         if (strcmp(value, "auto") == 0) s->search_target_override = -1;
         else if (strcmp(value, "history") == 0) s->search_target_override = SEARCH_TARGET_HISTORY;
         else if (strcmp(value, "response") == 0) s->search_target_override = SEARCH_TARGET_RESPONSE;
         else {
-            response_set_error(s, "Usage: :set search_target auto|history|response");
+            response_set_error(s, i18n_get(s->ui_language, I18N_USAGE_SET_SEARCH_TARGET));
             return;
         }
-        response_set_text(s, "search_target updated");
+        response_set_text(s, i18n_get(s->ui_language, I18N_SEARCH_TARGET_UPDATED));
         return;
     }
 
     if (strcmp(key, "max_entries") == 0) {
         if (!value) {
-            response_set_error(s, "Usage: :set max_entries <int>");
+            response_set_error(s, i18n_get(s->ui_language, I18N_USAGE_SET_MAX_ENTRIES));
             return;
         }
         char *end = NULL;
         long n = strtol(value, &end, 10);
         if (!end || *end != '\0' || n <= 0 || n > 1000000) {
-            response_set_error(s, "Usage: :set max_entries <int>");
+            response_set_error(s, i18n_get(s->ui_language, I18N_USAGE_SET_MAX_ENTRIES));
             return;
         }
         s->history_max_entries = (int)n;
         if (s->history) history_trim_oldest(s->history, s->history_max_entries);
-        response_set_text(s, "max_entries updated (session only)");
+        response_set_text(s, i18n_get(s->ui_language, I18N_MAX_ENTRIES_UPDATED_SESSION));
         return;
     }
 
-    response_set_error(s, "Unknown setting. Use search_target or max_entries");
+    response_set_error(s, i18n_get(s->ui_language, I18N_UNKNOWN_SETTING));
 }
 
-static char *build_help_text(const Keymap *km) {
-    if (!km) return strdup("No keymap loaded.");
+static void command_lang(AppState *s, const char *arg) {
+    if (!arg || !arg[0]) {
+        response_set_error(s, i18n_get(s->ui_language, I18N_USAGE_LANG));
+        return;
+    }
 
-    char *buf = NULL;
-    size_t len = 0;
-    size_t cap = 0;
+    if (strcmp(arg, "list") == 0) {
+        response_set_text(s, "Available languages:\n- auto (detect from LANG env)\n- en (English)\n- pt (Portuguese)");
+        return;
+    }
 
-    if (!appendf(&buf, &len, &cap, "Commands:\n")) goto fail;
-    if (!appendf(&buf, &len, &cap, "  :q | :quit  Quit application\n")) goto fail;
-    if (!appendf(&buf, &len, &cap, "  :h | :help  Show this help\n")) goto fail;
-    if (!appendf(&buf, &len, &cap, "  :theme list  List available theme presets\n")) goto fail;
-    if (!appendf(&buf, &len, &cap, "  :theme <name>  Apply theme preset for current session\n")) goto fail;
-    if (!appendf(&buf, &len, &cap, "  :theme <name> -s|--save  Apply and persist active preset\n")) goto fail;
-    if (!appendf(&buf, &len, &cap, "  :export curl|json  Export current request\n")) goto fail;
-    if (!appendf(&buf, &len, &cap, "  :auth bearer <token>  Set Authorization bearer header\n")) goto fail;
-    if (!appendf(&buf, &len, &cap, "  :auth basic <user>:<pass>  Set Authorization basic header\n")) goto fail;
-    if (!appendf(&buf, &len, &cap, "  :find <term>  Run contextual search immediately\n")) goto fail;
-    if (!appendf(&buf, &len, &cap, "  :set [search_target|max_entries] ...  Update runtime settings\n")) goto fail;
-    if (!appendf(&buf, &len, &cap, "  :clear! | :ch!  Clear history (memory + storage)\n\n")) goto fail;
-    if (!appendf(&buf, &len, &cap, "Navigation:\n")) goto fail;
-    if (!appendf(&buf, &len, &cap, "  Left/Right/Up/Down mirror h/l/k/j in normal mode\n\n")) goto fail;
-    if (!appendf(&buf, &len, &cap, "Key bindings:\n")) goto fail;
+    UiLanguageSetting setting;
+    if (i18n_parse_language_setting(arg, &setting) != 0) {
+        response_set_error(s, i18n_get(s->ui_language, I18N_UNKNOWN_LANGUAGE));
+        return;
+    }
+
+    s->ui_language_setting = setting;
+    s->ui_language = i18n_resolve_language(setting, getenv("LANG"));
+
+    char msg[128];
+    snprintf(msg, sizeof(msg), i18n_get(s->ui_language, I18N_LANGUAGE_UPDATED_FMT), 
+             i18n_language_setting_name(setting));
+    response_set_text(s, msg);
+}
+
+static void command_layout(AppState *s, const char *arg) {
+    if (!arg || !arg[0]) {
+        response_set_error(s, i18n_get(s->ui_language, I18N_USAGE_LAYOUT));
+        return;
+    }
+
+    if (strcmp(arg, "list") == 0) {
+        response_set_text(s, "Available layouts:\n- classic (History left, Editor/Response right)\n- quad (2x2 quadrant)\n- focus_editor (Large editor on top)");
+        return;
+    }
+
+    LayoutProfile profile;
+    if (strcmp(arg, "classic") == 0) {
+        profile = LAYOUT_PROFILE_CLASSIC;
+    } else if (strcmp(arg, "quad") == 0) {
+        profile = LAYOUT_PROFILE_QUAD;
+    } else if (strcmp(arg, "focus_editor") == 0) {
+        profile = LAYOUT_PROFILE_FOCUS_EDITOR;
+    } else {
+        response_set_error(s, i18n_get(s->ui_language, I18N_UNKNOWN_LAYOUT));
+        return;
+    }
+
+    s->ui_layout_profile = profile;
+
+    char msg[128];
+    snprintf(msg, sizeof(msg), i18n_get(s->ui_language, I18N_LAYOUT_UPDATED_FMT), 
+             layout_profile_name(profile));
+    response_set_text(s, msg);
+}
+
+/**
+ * Append basic commands section to help text buffer.
+ * Returns 0 on failure, 1 on success.
+ */
+static int append_help_basic(char **buf, size_t *len, size_t *cap, UiLanguage lang) {
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_HEADER_BASIC))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_CMD_QUIT))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_CMD_HELP))) return 0;
+    return 1;
+}
+
+/**
+ * Append language commands section to help text buffer.
+ * Returns 0 on failure, 1 on success.
+ */
+static int append_help_lang(char **buf, size_t *len, size_t *cap, UiLanguage lang) {
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_HEADER_LANG))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_CMD_LANG_LIST))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_CMD_LANG_SET))) return 0;
+    return 1;
+}
+
+/**
+ * Append layout commands section to help text buffer.
+ * Returns 0 on failure, 1 on success.
+ */
+static int append_help_layout(char **buf, size_t *len, size_t *cap, UiLanguage lang) {
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_HEADER_LAYOUT))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_CMD_LAYOUT_LIST))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_CMD_LAYOUT_SET))) return 0;
+    return 1;
+}
+
+/**
+ * Append theme management section to help text buffer.
+ * Returns 0 on failure, 1 on success.
+ */
+static int append_help_theme(char **buf, size_t *len, size_t *cap, UiLanguage lang) {
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_HEADER_THEME))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_CMD_THEME_LIST))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_CMD_THEME_APPLY))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_CMD_THEME_SAVE))) return 0;
+    return 1;
+}
+
+/**
+ * Append export section to help text buffer.
+ * Returns 0 on failure, 1 on success.
+ */
+static int append_help_export(char **buf, size_t *len, size_t *cap, UiLanguage lang) {
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_HEADER_EXPORT))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_CMD_EXPORT))) return 0;
+    return 1;
+}
+
+/**
+ * Append authentication section to help text buffer.
+ * Returns 0 on failure, 1 on success.
+ */
+static int append_help_auth(char **buf, size_t *len, size_t *cap, UiLanguage lang) {
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_HEADER_AUTH))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_CMD_AUTH_BEARER))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_CMD_AUTH_BASIC))) return 0;
+    return 1;
+}
+
+/**
+ * Append search section to help text buffer.
+ * Returns 0 on failure, 1 on success.
+ */
+static int append_help_search(char **buf, size_t *len, size_t *cap, UiLanguage lang) {
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_HEADER_SEARCH))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_CMD_FIND))) return 0;
+    return 1;
+}
+
+/**
+ * Append history section to help text buffer.
+ * Returns 0 on failure, 1 on success.
+ */
+static int append_help_history(char **buf, size_t *len, size_t *cap, UiLanguage lang) {
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_HEADER_HISTORY))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_CMD_CLEAR))) return 0;
+    return 1;
+}
+
+/**
+ * Append settings section to help text buffer.
+ * Returns 0 on failure, 1 on success.
+ */
+static int append_help_settings(char **buf, size_t *len, size_t *cap, UiLanguage lang) {
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_HEADER_SETTINGS))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_CMD_SET))) return 0;
+    return 1;
+}
+
+/**
+ * Append navigation and key bindings sections to help text buffer.
+ * Returns 0 on failure, 1 on success.
+ */
+static int append_help_keys(char **buf, size_t *len, size_t *cap, const Keymap *km, UiLanguage lang) {
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_NAV_HEADER))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_NAV_LINE))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_KEYS_HEADER))) return 0;
 
     for (int m = 0; m < MODE_COUNT; m++) {
-        if (!appendf(&buf, &len, &cap, "[%s]\n", mode_name((Mode)m))) goto fail;
+        if (!str_appendf(buf, len, cap, "[%s]\n", mode_name((Mode)m, lang))) return 0;
         for (int k = 0; k < KEYMAP_MAX_KEYCODE; k++) {
             Action a = km->table[m][k];
             if (a == ACT_NONE) continue;
 
             char key_name[32];
             if (!key_name_from_code(k, key_name, sizeof(key_name))) continue;
-            const char *desc = action_description(a);
+            const char *desc = action_description(a, lang);
             if (!desc || !desc[0]) {
-                desc = "No description available";
+                desc = i18n_get(lang, I18N_HELP_NO_DESC);
             }
-            if (!appendf(&buf, &len, &cap, "  %-8s -> %s\n", key_name, desc)) goto fail;
+            if (!str_appendf(buf, len, cap, "  %-12s -> %s\n", key_name, desc)) return 0;
         }
-        if (!appendf(&buf, &len, &cap, "\n")) goto fail;
+        if (!str_appendf(buf, len, cap, "\n")) return 0;
     }
+
+    return 1;
+}
+
+static char *build_help_text(const Keymap *km, UiLanguage lang) {
+    if (!km) return strdup(i18n_get(lang, I18N_NO_KEYMAP_LOADED));
+
+    char *buf = NULL;
+    size_t len = 0;
+    size_t cap = 0;
+
+    if (!append_help_basic(&buf, &len, &cap, lang)) goto fail;
+    if (!append_help_lang(&buf, &len, &cap, lang)) goto fail;
+    if (!append_help_layout(&buf, &len, &cap, lang)) goto fail;
+    if (!append_help_theme(&buf, &len, &cap, lang)) goto fail;
+    if (!append_help_export(&buf, &len, &cap, lang)) goto fail;
+    if (!append_help_auth(&buf, &len, &cap, lang)) goto fail;
+    if (!append_help_search(&buf, &len, &cap, lang)) goto fail;
+    if (!append_help_history(&buf, &len, &cap, lang)) goto fail;
+    if (!append_help_settings(&buf, &len, &cap, lang)) goto fail;
+    if (!append_help_keys(&buf, &len, &cap, km, lang)) goto fail;
 
     return buf;
 
@@ -682,8 +826,8 @@ void dispatch_execute_command(AppState *s, const Keymap *km, const char *cmd) {
     }
 
     if (strcmp(p, "h") == 0 || strcmp(p, "help") == 0) {
-        char *help = build_help_text(km);
-        if (!help) response_set_error(s, "Out of memory building help text");
+        char *help = build_help_text(km, s->ui_language);
+        if (!help) response_set_error(s, i18n_get(s->ui_language, I18N_OOM_BUILD_HELP));
         else {
             response_set_text(s, help);
             free(help);
@@ -698,7 +842,7 @@ void dispatch_execute_command(AppState *s, const Keymap *km, const char *cmd) {
         while (*args && isspace((unsigned char)*args)) args++;
 
         if (*args == '\0') {
-            response_set_error(s, "Usage: :theme <name> [-s|--save] | :theme list");
+            response_set_error(s, i18n_get(s->ui_language, I18N_USAGE_THEME_NAME_SAVE_OR_LIST));
             s->mode = MODE_NORMAL;
             clear_prompt(s);
             return;
@@ -709,7 +853,7 @@ void dispatch_execute_command(AppState *s, const Keymap *km, const char *cmd) {
         char *extra = strtok(NULL, " \t");
 
         if (!name || extra) {
-            response_set_error(s, "Usage: :theme <name> [-s|--save] | :theme list");
+            response_set_error(s, i18n_get(s->ui_language, I18N_USAGE_THEME_NAME_SAVE_OR_LIST));
             s->mode = MODE_NORMAL;
             clear_prompt(s);
             return;
@@ -717,7 +861,7 @@ void dispatch_execute_command(AppState *s, const Keymap *km, const char *cmd) {
 
         if (strcmp(name, "list") == 0) {
             if (flag) {
-                response_set_error(s, "Usage: :theme list");
+                response_set_error(s, i18n_get(s->ui_language, I18N_USAGE_THEME_LIST));
                 s->mode = MODE_NORMAL;
                 clear_prompt(s);
                 return;
@@ -733,7 +877,7 @@ void dispatch_execute_command(AppState *s, const Keymap *km, const char *cmd) {
             if (strcmp(flag, "-s") == 0 || strcmp(flag, "--save") == 0) {
                 save = 1;
             } else {
-                response_set_error(s, "Invalid flag. Use -s or --save");
+                response_set_error(s, i18n_get(s->ui_language, I18N_INVALID_THEME_FLAG));
                 s->mode = MODE_NORMAL;
                 clear_prompt(s);
                 return;
@@ -750,11 +894,11 @@ void dispatch_execute_command(AppState *s, const Keymap *km, const char *cmd) {
         char *args = p + 6;
         while (*args && isspace((unsigned char)*args)) args++;
         if (!*args) {
-            response_set_error(s, "Usage: :export curl|json");
+            response_set_error(s, i18n_get(s->ui_language, I18N_USAGE_EXPORT));
         } else {
             char *fmt = strtok(args, " \t");
             char *extra = strtok(NULL, " \t");
-            if (extra) response_set_error(s, "Usage: :export curl|json");
+            if (extra) response_set_error(s, i18n_get(s->ui_language, I18N_USAGE_EXPORT));
             else command_export_request(s, fmt);
         }
         s->mode = MODE_NORMAL;
@@ -800,9 +944,27 @@ void dispatch_execute_command(AppState *s, const Keymap *km, const char *cmd) {
             char *key = strtok(args, " \t");
             char *val = strtok(NULL, " \t");
             char *extra = strtok(NULL, " \t");
-            if (extra) response_set_error(s, "Usage: :set <key> <value>");
+            if (extra) response_set_error(s, i18n_get(s->ui_language, I18N_USAGE_SET_KEY_VALUE));
             else command_set(s, key, val);
         }
+        s->mode = MODE_NORMAL;
+        clear_prompt(s);
+        return;
+    }
+
+    if (strncmp(p, "lang", 4) == 0 && (p[4] == '\0' || isspace((unsigned char)p[4]))) {
+        char *args = p + 4;
+        while (*args && isspace((unsigned char)*args)) args++;
+        command_lang(s, args);
+        s->mode = MODE_NORMAL;
+        clear_prompt(s);
+        return;
+    }
+
+    if (strncmp(p, "layout", 6) == 0 && (p[6] == '\0' || isspace((unsigned char)p[6]))) {
+        char *args = p + 6;
+        while (*args && isspace((unsigned char)*args)) args++;
+        command_layout(s, args);
         s->mode = MODE_NORMAL;
         clear_prompt(s);
         return;
@@ -816,7 +978,7 @@ void dispatch_execute_command(AppState *s, const Keymap *km, const char *cmd) {
     }
 
     char msg[256];
-    snprintf(msg, sizeof(msg), "Unknown command: %s", p);
+    snprintf(msg, sizeof(msg), i18n_get(s->ui_language, I18N_UNKNOWN_COMMAND_FMT), p);
     response_set_error(s, msg);
     s->mode = MODE_NORMAL;
     clear_prompt(s);
