@@ -1,4 +1,5 @@
 #pragma once
+#include "core/i18n.h"
 
 typedef enum {
     ACT_NONE = 0,
@@ -27,4 +28,4 @@ typedef enum {
 Action action_from_string(const char *name);
 
 const char *action_to_string(Action a);
-const char *action_description(Action a);
+const char *action_description(Action a, UiLanguage lang);

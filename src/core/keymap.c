@@ -1,4 +1,5 @@
 #include "core/keymap.h"
+#include "core/utils.h"
 #include <ncurses.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -16,18 +17,6 @@ static void keymap_clear(Keymap *km) {
     }
 }
 
-static void trim(char *s) {
-    char *p = s;
-    while (*p && isspace((unsigned char)*p)) p++;
-    if (p != s) memmove(s, p, strlen(p) + 1);
-
-    size_t n = strlen(s);
-    while (n > 0 && isspace((unsigned char)s[n - 1])) {
-        s[n - 1] = '\0';
-        n--;
-    }
-}
-
 static int mode_from_section(const char *sec) {
     if (strcmp(sec, "normal") == 0) return MODE_NORMAL;
     if (strcmp(sec, "insert") == 0) return MODE_INSERT;
@@ -37,7 +26,7 @@ static int mode_from_section(const char *sec) {
 }
 
 static int keycode_from_token(char *tok) {
-    trim(tok);
+    str_trim(tok);
 
     size_t len = strlen(tok);
     if (len >= 3 && tok[0] == '"' && tok[len - 1] == '"') {
@@ -73,7 +62,7 @@ int keymap_load_file(Keymap *km, const char *path) {
         char *hash = strchr(line, '#');
         if (hash) *hash = '\0';
 
-        trim(line);
+        str_trim(line);
         if (line[0] == '\0') continue;
 
         if (line[0] == '[') {
@@ -84,7 +73,7 @@ int keymap_load_file(Keymap *km, const char *path) {
             if (sec_len >= sizeof(section)) sec_len = sizeof(section) - 1;
             memcpy(section, line + 1, sec_len);
             section[sec_len] = '\0';
-            trim(section);
+            str_trim(section);
             current_mode = mode_from_section(section);
             continue;
         }
@@ -96,8 +85,8 @@ int keymap_load_file(Keymap *km, const char *path) {
         char *key_tok = line;
         char *act_tok = eq + 1;
 
-        trim(key_tok);
-        trim(act_tok);
+        str_trim(key_tok);
+        str_trim(act_tok);
 
         int keycode = keycode_from_token(key_tok);
         Action action = action_from_string(act_tok);

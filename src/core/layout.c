@@ -1,32 +1,11 @@
 #include "core/layout.h"
+#include "core/utils.h"
 
 #include <ctype.h>
 #include <ncurses.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-static void trim(char *s) {
-    char *p = s;
-    while (*p && isspace((unsigned char)*p)) p++;
-    if (p != s) memmove(s, p, strlen(p) + 1);
-
-    size_t n = strlen(s);
-    while (n > 0 && isspace((unsigned char)s[n - 1])) {
-        s[n - 1] = '\0';
-        n--;
-    }
-}
-
-static int str_eq_ci(const char *a, const char *b) {
-    if (!a || !b) return 0;
-    while (*a && *b) {
-        if (tolower((unsigned char)*a) != tolower((unsigned char)*b)) return 0;
-        a++;
-        b++;
-    }
-    return *a == '\0' && *b == '\0';
-}
 
 static int parse_profile(const char *val, LayoutProfile *out) {
     if (!val || !out) return 0;
@@ -181,7 +160,8 @@ static void set_defaults(
     LayoutSlot *out_response_slot,
     LayoutSizing *out_sizing,
     LayoutTheme *out_theme,
-    int *out_show_footer_hint
+    int *out_show_footer_hint,
+    UiLanguageSetting *out_language_setting
 ) {
     if (out_profile) *out_profile = LAYOUT_PROFILE_CLASSIC;
     if (out_history_slot) *out_history_slot = LAYOUT_SLOT_TL;
@@ -218,10 +198,13 @@ static void set_defaults(
     if (out_show_footer_hint) {
         *out_show_footer_hint = 1;
     }
+    if (out_language_setting) {
+        *out_language_setting = UI_LANG_SETTING_AUTO;
+    }
 }
 
 static void set_default_theme(LayoutTheme *theme) {
-    set_defaults(NULL, NULL, NULL, NULL, NULL, theme, NULL);
+    set_defaults(NULL, NULL, NULL, NULL, NULL, theme, NULL, NULL);
 }
 
 static void theme_set_mono(LayoutTheme *theme) {
@@ -262,6 +245,7 @@ int layout_load_config(
     LayoutSizing *out_sizing,
     LayoutTheme *out_theme,
     int *out_show_footer_hint,
+    UiLanguageSetting *out_language_setting,
     char *out_theme_preset,
     size_t out_theme_preset_size
 ) {
@@ -280,7 +264,8 @@ int layout_load_config(
         out_response_slot,
         out_sizing,
         out_theme,
-        out_show_footer_hint
+        out_show_footer_hint,
+        out_language_setting
     );
 
     if (!path) return 0;
@@ -292,7 +277,7 @@ int layout_load_config(
     while (fgets(line, sizeof(line), f)) {
         char *hash = strchr(line, '#');
         if (hash) *hash = '\0';
-        trim(line);
+        str_trim(line);
         if (line[0] == '\0') continue;
 
         char *eq = strchr(line, '=');
@@ -301,8 +286,8 @@ int layout_load_config(
         *eq = '\0';
         char *key = line;
         char *val = eq + 1;
-        trim(key);
-        trim(val);
+        str_trim(key);
+        str_trim(val);
 
         if (strcmp(key, "profile") == 0) {
             LayoutProfile p;
@@ -321,6 +306,13 @@ int layout_load_config(
         if (strcmp(key, "show_footer_hint") == 0) {
             if (out_show_footer_hint) {
                 (void)parse_bool(val, out_show_footer_hint);
+            }
+            continue;
+        }
+
+        if (strcmp(key, "language") == 0) {
+            if (out_language_setting) {
+                (void)i18n_parse_language_setting(val, out_language_setting);
             }
             continue;
         }
@@ -521,7 +513,7 @@ int layout_theme_catalog_load(const char *path, ThemeCatalog *c) {
     while (fgets(line, sizeof(line), f)) {
         char *hash = strchr(line, '#');
         if (hash) *hash = '\0';
-        trim(line);
+        str_trim(line);
         if (line[0] == '\0') continue;
 
         size_t n = strlen(line);
@@ -535,7 +527,7 @@ int layout_theme_catalog_load(const char *path, ThemeCatalog *c) {
 
             line[n - 1] = '\0';
             char *name = line + 1;
-            trim(name);
+            str_trim(name);
             if (!name[0]) {
                 have_section = 0;
                 continue;
@@ -558,8 +550,8 @@ int layout_theme_catalog_load(const char *path, ThemeCatalog *c) {
 
         char *key = line;
         char *val = eq + 1;
-        trim(key);
-        trim(val);
+        str_trim(key);
+        str_trim(val);
 
         if (strcmp(key, "use_colors") == 0) {
             (void)parse_bool(val, &current_theme.use_colors);
@@ -671,6 +663,7 @@ int layout_save_config(
     const LayoutSizing *sizing,
     const LayoutTheme *theme,
     int show_footer_hint,
+    UiLanguageSetting language_setting,
     const char *theme_preset
 ) {
     if (!path || !sizing || !theme) return 1;
@@ -686,6 +679,8 @@ int layout_save_config(
             "#   focus_editor -> Large editor on top, History/Response split at bottom\n"
             "profile = %s\n"
             "theme_preset = %s\n"
+            "# UI language: auto|en|pt\n"
+            "language = %s\n"
             "# Footer quick hint in lower-right corner\n"
             "# true/false, yes/no, on/off, 1/0\n"
             "show_footer_hint = %s\n"
@@ -724,6 +719,7 @@ int layout_save_config(
             "error_bg = %s\n",
             layout_profile_name(profile),
             (theme_preset && theme_preset[0]) ? theme_preset : "",
+            i18n_language_setting_name(language_setting),
             show_footer_hint ? "true" : "false",
             slot_name(history_slot),
             slot_name(editor_slot),

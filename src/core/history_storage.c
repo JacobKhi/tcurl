@@ -1,4 +1,5 @@
 #include "core/history_storage.h"
+#include "core/utils.h"
 
 #include "state.h"
 #include "core/cjson_compat.h"
@@ -11,18 +12,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-static void trim(char *s) {
-    char *p = s;
-    while (*p && isspace((unsigned char)*p)) p++;
-    if (p != s) memmove(s, p, strlen(p) + 1);
-
-    size_t n = strlen(s);
-    while (n > 0 && isspace((unsigned char)s[n - 1])) {
-        s[n - 1] = '\0';
-        n--;
-    }
-}
 
 static int ensure_parent_dirs(const char *path) {
     char *tmp = strdup(path);
@@ -123,7 +112,7 @@ int history_storage_load_with_stats(History *h, const char *path, HistoryLoadSta
 
     char line[65536];
     while (fgets(line, sizeof(line), f)) {
-        trim(line);
+        str_trim(line);
         if (line[0] == '\0') continue;
 
         cJSON *root = cJSON_Parse(line);
@@ -267,7 +256,7 @@ int history_config_load_max_entries(const char *path, int fallback) {
     while (fgets(line, sizeof(line), f)) {
         char *hash = strchr(line, '#');
         if (hash) *hash = '\0';
-        trim(line);
+        str_trim(line);
         if (line[0] == '\0') continue;
 
         char *eq = strchr(line, '=');
@@ -276,8 +265,8 @@ int history_config_load_max_entries(const char *path, int fallback) {
 
         char *key = line;
         char *val = eq + 1;
-        trim(key);
-        trim(val);
+        str_trim(key);
+        str_trim(val);
 
         if (strcmp(key, "max_entries") != 0) continue;
 

@@ -27,31 +27,31 @@ typedef struct {
     int ok;
 } Rect;
 
-static const char *mode_label(Mode m) {
+static const char *mode_label(Mode m, UiLanguage lang) {
     switch (m) {
         case MODE_NORMAL:
-            return "NORMAL";
+            return i18n_get(lang, I18N_MODE_NORMAL);
         case MODE_INSERT:
-            return "INSERT";
+            return i18n_get(lang, I18N_MODE_INSERT);
         case MODE_COMMAND:
-            return "COMMAND";
+            return i18n_get(lang, I18N_MODE_COMMAND);
         case MODE_SEARCH:
-            return "SEARCH";
+            return i18n_get(lang, I18N_MODE_SEARCH);
         default:
-            return "UNKNOWN";
+            return i18n_get(lang, I18N_MODE_UNKNOWN);
     }
 }
 
-static const char *panel_label(Panel p) {
+static const char *panel_label(Panel p, UiLanguage lang) {
     switch (p) {
         case PANEL_HISTORY:
-            return "HISTORY";
+            return i18n_get(lang, I18N_PANEL_HISTORY);
         case PANEL_EDITOR:
-            return "EDITOR";
+            return i18n_get(lang, I18N_PANEL_EDITOR);
         case PANEL_RESPONSE:
-            return "RESPONSE";
+            return i18n_get(lang, I18N_PANEL_RESPONSE);
         default:
-            return "UNKNOWN";
+            return i18n_get(lang, I18N_PANEL_UNKNOWN);
     }
 }
 
@@ -315,7 +315,7 @@ static void draw_response_content(WINDOW *w, const AppState *state) {
     getmaxyx(w, h, wd);
 
     if (state->is_request_in_flight) {
-        mvwaddnstr(w, 1, 2, "Sending request...", wd - 4);
+        mvwaddnstr(w, 1, 2, i18n_get(state->ui_language, I18N_SENDING_REQUEST), wd - 4);
         wnoutrefresh(w);
         return;
     }
@@ -323,7 +323,7 @@ static void draw_response_content(WINDOW *w, const AppState *state) {
     if (state->response.error) {
         if (g_theme_colors) wattron(w, COLOR_PAIR(PAIR_ERROR) | A_BOLD);
         else wattron(w, A_BOLD);
-        mvwaddnstr(w, 1, 2, "Request failed:", wd - 4);
+        mvwaddnstr(w, 1, 2, i18n_get(state->ui_language, I18N_REQUEST_FAILED), wd - 4);
         if (g_theme_colors) wattroff(w, COLOR_PAIR(PAIR_ERROR) | A_BOLD);
         else wattroff(w, A_BOLD);
 
@@ -333,7 +333,7 @@ static void draw_response_content(WINDOW *w, const AppState *state) {
     }
 
     if (!state->response.body_view) {
-        mvwaddnstr(w, 1, 2, "No response yet", wd - 4);
+        mvwaddnstr(w, 1, 2, i18n_get(state->ui_language, I18N_NO_RESPONSE_YET), wd - 4);
         wnoutrefresh(w);
         return;
     }
@@ -344,11 +344,11 @@ static void draw_response_content(WINDOW *w, const AppState *state) {
     snprintf(
         meta,
         sizeof(meta),
-        "Status: %ld | Time: %.0f ms | Size: %.1f KB%s | scroll:%d",
+        i18n_get(state->ui_language, I18N_RESPONSE_META_FMT),
         state->response.status,
         state->response.elapsed_ms,
         bytes / 1024.0,
-        state->response.is_json ? " | JSON" : "",
+        state->response.is_json ? i18n_get(state->ui_language, I18N_RESPONSE_META_JSON) : "",
         state->response_scroll
     );
 
@@ -490,7 +490,7 @@ static void draw_editor_split_content(WINDOW *w, AppState *state, int *out_cy, i
         if (g_theme_colors) wattron(w, COLOR_PAIR(PAIR_TAB_ACTIVE));
         else wattron(w, A_REVERSE);
     }
-    mvwaddnstr(w, url_label_row, 2, "URL:", wd - 4);
+    mvwaddnstr(w, url_label_row, 2, i18n_get(state->ui_language, I18N_URL_LABEL), wd - 4);
     if (state->active_field == EDIT_FIELD_URL) {
         if (g_theme_colors) wattroff(w, COLOR_PAIR(PAIR_TAB_ACTIVE));
         else wattroff(w, A_REVERSE);
@@ -541,7 +541,7 @@ static void draw_editor_split_content(WINDOW *w, AppState *state, int *out_cy, i
         if (g_theme_colors) wattron(w, COLOR_PAIR(PAIR_TAB_ACTIVE));
         else wattron(w, A_REVERSE);
     }
-    mvwaddnstr(w, split_label_row, body_left, "BODY", body_right - body_left + 1);
+    mvwaddnstr(w, split_label_row, body_left, i18n_get(state->ui_language, I18N_BODY_LABEL), body_right - body_left + 1);
     if (state->active_field == EDIT_FIELD_BODY) {
         if (g_theme_colors) wattroff(w, COLOR_PAIR(PAIR_TAB_ACTIVE));
         else wattroff(w, A_REVERSE);
@@ -551,7 +551,7 @@ static void draw_editor_split_content(WINDOW *w, AppState *state, int *out_cy, i
         if (g_theme_colors) wattron(w, COLOR_PAIR(PAIR_TAB_ACTIVE));
         else wattron(w, A_REVERSE);
     }
-    mvwaddnstr(w, split_label_row, headers_left, "HEADERS", headers_right - headers_left + 1);
+    mvwaddnstr(w, split_label_row, headers_left, i18n_get(state->ui_language, I18N_HEADERS_LABEL), headers_right - headers_left + 1);
     if (state->active_field == EDIT_FIELD_HEADERS) {
         if (g_theme_colors) wattroff(w, COLOR_PAIR(PAIR_TAB_ACTIVE));
         else wattroff(w, A_REVERSE);
@@ -625,9 +625,9 @@ static void draw_editor_tabs_content(WINDOW *w, AppState *state, int *out_cy, in
     int x = 2;
     draw_editor_tab_item(w, 1, x, "URL", state->active_field == EDIT_FIELD_URL);
     x += 7;
-    draw_editor_tab_item(w, 1, x, "BODY", state->active_field == EDIT_FIELD_BODY);
+    draw_editor_tab_item(w, 1, x, i18n_get(state->ui_language, I18N_BODY_LABEL), state->active_field == EDIT_FIELD_BODY);
     x += 8;
-    draw_editor_tab_item(w, 1, x, "HEADERS", state->active_field == EDIT_FIELD_HEADERS);
+    draw_editor_tab_item(w, 1, x, i18n_get(state->ui_language, I18N_HEADERS_LABEL), state->active_field == EDIT_FIELD_HEADERS);
 
     mvwhline(w, 2, 1, ACS_HLINE, wd - 2);
 
@@ -781,7 +781,7 @@ void ui_draw(AppState *state) {
     snprintf(
         top,
         sizeof(top),
-        " tcurl | %s | layout=%s ",
+        i18n_get(state->ui_language, I18N_TOPBAR_FMT),
         method_label(state->method),
         layout_profile_name(state->ui_layout_profile)
     );
@@ -807,10 +807,10 @@ void ui_draw(AppState *state) {
             snprintf(
                 status,
                 sizeof(status),
-                " %s | focus=%s | env=%s | history_selected=%d | load_skipped=%d | not found: %s ",
-                mode_label(state->mode),
-                panel_label(state->focused_panel),
-                env_name ? env_name : "none",
+                i18n_get(state->ui_language, I18N_STATUS_NOT_FOUND_FMT),
+                mode_label(state->mode, state->ui_language),
+                panel_label(state->focused_panel, state->ui_language),
+                env_name ? env_name : i18n_get(state->ui_language, I18N_ENV_NONE),
                 state->history_selected,
                 state->history_skipped_invalid,
                 state->search_query
@@ -820,10 +820,10 @@ void ui_draw(AppState *state) {
             snprintf(
                 status,
                 sizeof(status),
-                " %s | focus=%s | env=%s | history_selected=%d | load_skipped=%d | save_err=%d ",
-                mode_label(state->mode),
-                panel_label(state->focused_panel),
-                env_name ? env_name : "none",
+                i18n_get(state->ui_language, I18N_STATUS_DEFAULT_FMT),
+                mode_label(state->mode, state->ui_language),
+                panel_label(state->focused_panel, state->ui_language),
+                env_name ? env_name : i18n_get(state->ui_language, I18N_ENV_NONE),
                 state->history_selected,
                 state->history_skipped_invalid,
                 state->history_last_save_error
@@ -831,7 +831,7 @@ void ui_draw(AppState *state) {
         }
 
         if (state->ui_show_footer_hint && cols > 20) {
-            const char *hint = ":h help  :q quit  Move: h/j/k/l or arrows";
+            const char *hint = i18n_get(state->ui_language, I18N_HINT_FOOTER);
             int hint_len = (int)strlen(hint);
             int max_hint_len = cols - 8;
             if (hint_len > max_hint_len) hint_len = max_hint_len;
@@ -858,23 +858,23 @@ void ui_draw(AppState *state) {
     wnoutrefresh(stdscr);
 
     if (w_history && w_editor && w_response) {
-        draw_boxed_window(w_history, " History ", state->focused_panel == PANEL_HISTORY);
+        draw_boxed_window(w_history, i18n_get(state->ui_language, I18N_WIN_HISTORY), state->focused_panel == PANEL_HISTORY);
         draw_history_content(w_history, state);
 
         draw_boxed_window(
             w_editor,
             state->ui_layout_profile == LAYOUT_PROFILE_FOCUS_EDITOR
-                ? " Editor [TABS] "
+                ? i18n_get(state->ui_language, I18N_WIN_EDITOR_TABS)
                 : (state->active_field == EDIT_FIELD_URL
-                       ? " Editor [URL] "
+                       ? i18n_get(state->ui_language, I18N_WIN_EDITOR_URL)
                        : (state->active_field == EDIT_FIELD_BODY
-                              ? " Editor [BODY] "
-                              : " Editor [HEADERS] ")),
+                              ? i18n_get(state->ui_language, I18N_WIN_EDITOR_BODY)
+                              : i18n_get(state->ui_language, I18N_WIN_EDITOR_HEADERS))),
             state->focused_panel == PANEL_EDITOR
         );
         draw_editor_content(w_editor, state);
 
-        draw_boxed_window(w_response, " Response ", state->focused_panel == PANEL_RESPONSE);
+        draw_boxed_window(w_response, i18n_get(state->ui_language, I18N_WIN_RESPONSE), state->focused_panel == PANEL_RESPONSE);
         draw_response_content(w_response, state);
     }
 

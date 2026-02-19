@@ -1,23 +1,12 @@
 #include "core/env.h"
 #include "core/cjson_compat.h"
+#include "core/utils.h"
 
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-static void trim(char *s) {
-    char *p = s;
-    while (*p && isspace((unsigned char)*p)) p++;
-    if (p != s) memmove(s, p, strlen(p) + 1);
-
-    size_t n = strlen(s);
-    while (n > 0 && isspace((unsigned char)s[n - 1])) {
-        s[n - 1] = '\0';
-        n--;
-    }
-}
 
 static char *read_all(const char *path) {
     FILE *f = fopen(path, "rb");
@@ -314,7 +303,7 @@ int header_suggestions_load(const char *path, char ***out_items, int *out_count)
     while (fgets(line, sizeof(line), f)) {
         char *hash = strchr(line, '#');
         if (hash) *hash = '\0';
-        trim(line);
+        str_trim(line);
         if (line[0] == '\0') continue;
 
         if (count == cap) {

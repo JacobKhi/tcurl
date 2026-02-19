@@ -46,9 +46,11 @@ void app_state_init(AppState *s) {
         &s->ui_layout_sizing,
         &s->ui_theme,
         &s->ui_show_footer_hint,
+        &s->ui_language_setting,
         s->active_theme_preset,
         sizeof(s->active_theme_preset)
     );
+    s->ui_language = i18n_resolve_language(s->ui_language_setting, getenv("LANG"));
     layout_theme_catalog_init(&s->theme_catalog);
     (void)layout_theme_catalog_load(
         s->paths.themes_conf ? s->paths.themes_conf : "config/themes.conf",

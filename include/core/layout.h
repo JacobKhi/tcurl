@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stddef.h>
+#include "core/i18n.h"
 
 typedef enum {
     LAYOUT_PROFILE_CLASSIC = 0,
@@ -62,6 +63,7 @@ int layout_load_config(
     LayoutSizing *out_sizing,
     LayoutTheme *out_theme,
     int *out_show_footer_hint,
+    UiLanguageSetting *out_language_setting,
     char *out_theme_preset,
     size_t out_theme_preset_size
 );
@@ -85,5 +87,6 @@ int layout_save_config(
     const LayoutSizing *sizing,
     const LayoutTheme *theme,
     int show_footer_hint,
+    UiLanguageSetting language_setting,
     const char *theme_preset
 );

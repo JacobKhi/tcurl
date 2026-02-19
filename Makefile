@@ -28,7 +28,9 @@ SRC = \
   src/core/env.c \
   src/core/http.c \
   src/core/request_thread.c \
-  src/core/format.c
+  src/core/format.c \
+  src/core/i18n.c \
+  src/core/utils.c
 
 all: $(TARGET)
 
@@ -43,28 +45,7 @@ deps:
 	sh scripts/setup.sh
 
 check-deps:
-	@missing=0; \
-	for cmd in gcc make pkg-config; do \
-		if ! command -v $$cmd >/dev/null 2>&1; then \
-			echo "Missing required command: $$cmd"; \
-			missing=1; \
-		fi; \
-	done; \
-	for pc in ncurses libcurl; do \
-		if ! pkg-config --exists $$pc; then \
-			echo "Missing pkg-config dependency: $$pc"; \
-			missing=1; \
-		fi; \
-	done; \
-	if ! pkg-config --exists libcjson && ! pkg-config --exists cjson; then \
-		echo "Missing pkg-config dependency: libcjson (or cjson)"; \
-		missing=1; \
-	fi; \
-	if [ $$missing -ne 0 ]; then \
-		echo "Dependency check failed."; \
-		exit 1; \
-	fi; \
-	echo "All dependencies are available."
+	sh scripts/check-deps.sh
 
 TEST_TARGET = tests/run_tests
 TEST_SRC = \
@@ -74,7 +55,9 @@ TEST_SRC = \
   tests/test_env.c \
   tests/test_history_storage.c \
   tests/test_format.c \
-  tests/test_export_auth.c
+  tests/test_export_auth.c \
+  tests/test_i18n.c \
+  tests/test_utils.c
 TEST_CORE_SRC = \
   src/core/actions.c \
   src/core/auth.c \
@@ -85,53 +68,26 @@ TEST_CORE_SRC = \
   src/core/textbuf.c \
   src/core/history.c \
   src/core/history_storage.c \
-  src/core/format.c
+  src/core/format.c \
+  src/core/i18n.c \
+  src/core/utils.c
 TEST_LDFLAGS = $(PKG_LIBS) -lpthread
 
 $(TEST_TARGET): $(TEST_SRC) $(TEST_CORE_SRC)
 	$(CC) $(CFLAGS) -o $(TEST_TARGET) $(TEST_SRC) $(TEST_CORE_SRC) $(TEST_LDFLAGS)
 
 test: $(TEST_TARGET)
-	./$(TEST_TARGET)
+	sh scripts/test.sh $(TEST_TARGET)
 
 test-sanitizers:
 	$(CC) $(CFLAGS) -fsanitize=address,undefined -fno-omit-frame-pointer -o tests/run_tests_asan $(TEST_SRC) $(TEST_CORE_SRC) $(TEST_LDFLAGS) -fsanitize=address,undefined
-	ASAN_OPTIONS=detect_leaks=0 ./tests/run_tests_asan
+	sh scripts/test-sanitizers.sh tests/run_tests_asan
 
 install-user: $(TARGET)
-	@set -e; \
-	BIN_DIR="$$HOME/.local/bin"; \
-	CONF_DIR="$$HOME/.config/tcurl"; \
-	mkdir -p "$$BIN_DIR" "$$CONF_DIR"; \
-	cp "$(TARGET)" "$$BIN_DIR/tcurl"; \
-	chmod 755 "$$BIN_DIR/tcurl"; \
-	for f in keymap.conf layout.conf themes.conf envs.json headers.txt history.conf; do \
-		if [ ! -f "$$CONF_DIR/$$f" ]; then \
-			cp "config/$$f" "$$CONF_DIR/$$f"; \
-		fi; \
-	done; \
-	echo "Installed $$BIN_DIR/tcurl"; \
-	echo "Config directory: $$CONF_DIR"; \
-	case ":$$PATH:" in \
-		*":$$BIN_DIR:"*) \
-			echo "PATH check: $$BIN_DIR is already available." ;; \
-		*) \
-			echo "WARNING: $$BIN_DIR is not in PATH."; \
-			echo "Add this to your shell config (e.g. ~/.zshrc):"; \
-			echo '  export PATH="$$HOME/.local/bin:$$PATH"'; \
-			echo "Then restart your shell."; ;; \
-	esac
+	sh scripts/install-user.sh $(TARGET)
 
 uninstall-user:
-	@set -e; \
-	BIN_PATH="$$HOME/.local/bin/tcurl"; \
-	if [ -f "$$BIN_PATH" ]; then \
-		rm -f "$$BIN_PATH"; \
-		echo "Removed $$BIN_PATH"; \
-	else \
-		echo "$$BIN_PATH not found."; \
-	fi; \
-	echo "User config kept at $$HOME/.config/tcurl"
+	sh scripts/uninstall-user.sh
 
 release: $(TARGET)
 	sh scripts/release.sh
