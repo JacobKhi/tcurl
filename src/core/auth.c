@@ -1,57 +1,11 @@
 #include "core/auth.h"
+#include "core/utils.h"
 
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-static int key_eq_ci(const char *a, const char *b) {
-    if (!a || !b) return 0;
-    while (*a && *b) {
-        if (tolower((unsigned char)*a) != tolower((unsigned char)*b)) return 0;
-        a++;
-        b++;
-    }
-    return *a == '\0' && *b == '\0';
-}
-
-static char *trim_left(char *s) {
-    while (*s && isspace((unsigned char)*s)) s++;
-    return s;
-}
-
-static void trim_right(char *s) {
-    size_t n = strlen(s);
-    while (n > 0 && isspace((unsigned char)s[n - 1])) {
-        s[n - 1] = '\0';
-        n--;
-    }
-}
-
-static int appendf(char **buf, size_t *len, size_t *cap, const char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    int need = vsnprintf(NULL, 0, fmt, ap);
-    va_end(ap);
-    if (need < 0) return 1;
-
-    size_t req = *len + (size_t)need + 1;
-    if (*cap < req) {
-        size_t new_cap = *cap ? *cap : 128;
-        while (new_cap < req) new_cap *= 2;
-        char *n = realloc(*buf, new_cap);
-        if (!n) return 1;
-        *buf = n;
-        *cap = new_cap;
-    }
-
-    va_start(ap, fmt);
-    vsnprintf(*buf + *len, *cap - *len, fmt, ap);
-    va_end(ap);
-    *len += (size_t)need;
-    return 0;
-}
 
 static int set_header_value(TextBuffer *headers, const char *key, const char *value) {
     if (!headers || !key || !value) return 1;
@@ -72,15 +26,15 @@ static int set_header_value(TextBuffer *headers, const char *key, const char *va
             free(out);
             return 1;
         }
-        char *p = trim_left(tmp);
-        trim_right(p);
+        char *p = str_trim_left(tmp);
+        str_trim_right(p);
 
         char *colon = strchr(p, ':');
         if (colon) {
             *colon = '\0';
-            trim_right(p);
-            if (!replaced && key_eq_ci(p, key)) {
-                if (appendf(&out, &len, &cap, "%s: %s\n", key, value) != 0) {
+            str_trim_right(p);
+            if (!replaced && str_eq_ci(p, key)) {
+                if (!str_appendf(&out, &len, &cap, "%s: %s\n", key, value)) {
                     free(tmp);
                     free(all);
                     free(out);
@@ -88,7 +42,7 @@ static int set_header_value(TextBuffer *headers, const char *key, const char *va
                 }
                 replaced = 1;
             } else {
-                if (appendf(&out, &len, &cap, "%s\n", line) != 0) {
+                if (!str_appendf(&out, &len, &cap, "%s\n", line)) {
                     free(tmp);
                     free(all);
                     free(out);
@@ -96,7 +50,7 @@ static int set_header_value(TextBuffer *headers, const char *key, const char *va
                 }
             }
         } else {
-            if (appendf(&out, &len, &cap, "%s\n", line) != 0) {
+            if (!str_appendf(&out, &len, &cap, "%s\n", line)) {
                 free(tmp);
                 free(all);
                 free(out);
@@ -108,7 +62,7 @@ static int set_header_value(TextBuffer *headers, const char *key, const char *va
     }
 
     if (!replaced) {
-        if (appendf(&out, &len, &cap, "%s: %s\n", key, value) != 0) {
+        if (!str_appendf(&out, &len, &cap, "%s: %s\n", key, value)) {
             free(all);
             free(out);
             return 1;
