@@ -1,5 +1,6 @@
 # binaries
 tcurl
+test_keys
 *.out
 *.exe
 

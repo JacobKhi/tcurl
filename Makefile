@@ -57,7 +57,8 @@ TEST_SRC = \
   tests/test_format.c \
   tests/test_export_auth.c \
   tests/test_i18n.c \
-  tests/test_utils.c
+  tests/test_utils.c \
+  tests/test_textbuf_navigation.c
 TEST_CORE_SRC = \
   src/core/actions.c \
   src/core/auth.c \

@@ -21,6 +21,13 @@ void tb_move_right(TextBuffer *tb);
 void tb_move_up(TextBuffer *tb);
 void tb_move_down(TextBuffer *tb);
 
+void tb_move_line_start(TextBuffer *tb);
+void tb_move_line_end(TextBuffer *tb);
+void tb_move_word_left(TextBuffer *tb);
+void tb_move_word_right(TextBuffer *tb);
+
+void tb_delete_char(TextBuffer *tb);
+
 char *tb_to_string(const TextBuffer *tb);
 
 void tb_set_from_string(TextBuffer *tb, const char *s);
