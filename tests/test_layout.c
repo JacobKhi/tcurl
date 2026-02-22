@@ -1,6 +1,6 @@
 #include "test.h"
 
-#include "core/layout.h"
+#include "core/config/layout.h"
 
 static int file_contains(const char *path, const char *needle) {
     FILE *f = fopen(path, "r");

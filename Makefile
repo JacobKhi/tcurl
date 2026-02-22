@@ -12,25 +12,29 @@ TARGET = tcurl
 SRC = \
   src/main.c \
   src/state.c \
-  src/ui/draw.c \
-  src/ui/input.c \
-  src/core/actions.c \
-  src/core/auth.c \
-  src/core/keymap.c \
-  src/core/dispatch.c \
-  src/core/export.c \
-  src/core/paths.c \
-  src/core/request_snapshot.c \
-  src/core/textbuf.c \
-  src/core/history.c \
-  src/core/history_storage.c \
-  src/core/layout.c \
-  src/core/env.c \
-  src/core/http.c \
-  src/core/request_thread.c \
-  src/core/format.c \
-  src/core/i18n.c \
-  src/core/utils.c
+  src/ui/panels/draw.c \
+  src/ui/input/input.c \
+  src/core/interaction/actions.c \
+  src/core/interaction/auth.c \
+  src/core/config/keymap.c \
+  src/orchestration/dispatch.c \
+  src/core/format/export.c \
+  src/core/storage/paths.c \
+  src/core/http/request_snapshot.c \
+  src/core/text/textbuf.c \
+  src/core/storage/history.c \
+  src/core/storage/history_persistence.c \
+  src/core/config/layout.c \
+  src/core/config/env.c \
+  src/core/http/http.c \
+  src/core/http/request_thread.c \
+  src/core/format/format.c \
+  src/core/text/i18n.c \
+  src/core/utils/utils.c \
+  src/core/interaction/search.c \
+  src/core/cli/command_handlers.c \
+  src/core/cli/help_builder.c \
+  src/core/cli/command_parser.c
 
 all: $(TARGET)
 
@@ -58,20 +62,37 @@ TEST_SRC = \
   tests/test_export_auth.c \
   tests/test_i18n.c \
   tests/test_utils.c \
-  tests/test_textbuf_navigation.c
+  tests/test_textbuf_navigation.c \
+  tests/test_search.c \
+  tests/test_command_handlers.c \
+  tests/test_help_builder.c \
+  tests/test_request_snapshot.c \
+  tests/test_actions.c \
+  tests/test_dispatch.c
 TEST_CORE_SRC = \
-  src/core/actions.c \
-  src/core/auth.c \
-  src/core/export.c \
-  src/core/keymap.c \
-  src/core/layout.c \
-  src/core/env.c \
-  src/core/textbuf.c \
-  src/core/history.c \
-  src/core/history_storage.c \
-  src/core/format.c \
-  src/core/i18n.c \
-  src/core/utils.c
+  src/state.c \
+  src/core/interaction/actions.c \
+  src/core/interaction/auth.c \
+  src/core/format/export.c \
+  src/core/config/keymap.c \
+  src/core/config/layout.c \
+  src/core/config/env.c \
+  src/core/storage/paths.c \
+  src/core/text/textbuf.c \
+  src/core/storage/history.c \
+  src/core/storage/history_persistence.c \
+  src/core/format/format.c \
+  src/core/text/i18n.c \
+  src/core/utils/utils.c \
+  src/core/interaction/search.c \
+  src/core/http/request_snapshot.c \
+  src/core/cli/command_handlers.c \
+  src/core/cli/help_builder.c \
+  src/core/cli/command_parser.c \
+  src/ui/panels/draw.c \
+  src/orchestration/dispatch.c \
+  src/core/http/request_thread.c \
+  src/core/http/http.c
 TEST_LDFLAGS = $(PKG_LIBS) -lpthread
 
 $(TEST_TARGET): $(TEST_SRC) $(TEST_CORE_SRC)

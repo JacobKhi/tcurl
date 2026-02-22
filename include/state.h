@@ -1,14 +1,11 @@
 #pragma once
 #include <pthread.h>
-#include "core/textbuf.h"
-#include "core/env.h"
-#include "core/layout.h"
-#include "core/paths.h"
-#include "core/i18n.h"
-
-#define URL_MAX 1024
-#define PROMPT_MAX 256
-#define CMD_HISTORY_MAX 32
+#include "core/text/textbuf.h"
+#include "core/config/env.h"
+#include "core/config/layout.h"
+#include "core/storage/paths.h"
+#include "core/text/i18n.h"
+#include "core/config/constants.h"
 
 typedef enum {
     MODE_NORMAL = 0,
@@ -62,73 +59,99 @@ typedef enum {
 
 typedef struct History History;
 
+/* UI State - Mode, layout, theme, language */
 typedef struct {
-    int running;
     Mode mode;
-    pthread_mutex_t state_mu;
-
     Panel focused_panel;
-    LayoutProfile ui_layout_profile;
+    LayoutProfile layout_profile;
     LayoutSlot quad_history_slot;
     LayoutSlot quad_editor_slot;
     LayoutSlot quad_response_slot;
-    LayoutSizing ui_layout_sizing;
-    LayoutTheme ui_theme;
-    int ui_show_footer_hint;
-    UiLanguageSetting ui_language_setting;
-    UiLanguage ui_language;
+    LayoutSizing layout_sizing;
+    LayoutTheme theme;
+    int show_footer_hint;
+    UiLanguageSetting language_setting;
+    UiLanguage language;
     ThemeCatalog theme_catalog;
     char active_theme_preset[64];
-    AppPaths paths;
+} UIState;
 
-    int history_selected;
-
+/* Editor State - URL, body, headers, method */
+typedef struct {
     char url[URL_MAX];
     int url_len;
     int url_cursor;
-
     TextBuffer body;
     TextBuffer headers;
-
+    int body_scroll;
+    int headers_scroll;
     EditField active_field;
+    HttpMethod method;
+} EditorState;
 
+/* Response State - HTTP response, status, scroll */
+typedef struct {
     HttpResponse response;
     int is_request_in_flight;
-    int response_scroll;
+    int scroll;
+} ResponseState;
 
-    HttpMethod method;
-
+/* History State - History entries, selection, persistence */
+typedef struct {
     History *history;
-    int history_max_entries;
-    char *history_path;
-    int history_loaded_ok;
-    int history_skipped_invalid;
-    int history_last_save_error;
+    int selected;
+    int max_entries;
+    char *path;
+    int loaded_ok;
+    int skipped_invalid;
+    int last_save_error;
+} HistoryState;
 
+/* Config State - Environments, paths, suggestions */
+typedef struct {
+    AppPaths paths;
     EnvStore envs;
     char **header_suggestions;
     int header_suggestions_count;
-
+    /* Header autocomplete state */
     int headers_ac_row;
     int headers_ac_next_match;
     char *headers_ac_seed;
+} ConfigState;
 
-    PromptKind prompt_kind;
-    char prompt_input[PROMPT_MAX];
-    int prompt_len;
-    int prompt_cursor;
+/* Prompt State - Command/search prompt */
+typedef struct {
+    PromptKind kind;
+    char input[PROMPT_MAX];
+    int len;
+    int cursor;
     char command_history[CMD_HISTORY_MAX][PROMPT_MAX];
     int command_history_count;
     int command_history_index;
+} PromptState;
 
-    char search_query[PROMPT_MAX];
-    SearchTarget search_target;
-    int search_target_override; /* -1 auto, else SearchTarget */
-    int search_match_index;
-    int search_not_found;
+/* Search State - Search functionality */
+typedef struct {
+    char query[PROMPT_MAX];
+    SearchTarget target;
+    int target_override; /* -1 auto, else SearchTarget */
+    int match_index;
+    int not_found;
+} SearchState;
 
-    int body_scroll;
-    int headers_scroll;
+/* Main Application State - Composed of sub-states */
+typedef struct {
+    int running;
+    pthread_mutex_t state_mu;
+    
+    /* Sub-states - organized by concern */
+    UIState ui;
+    EditorState editor;
+    ResponseState response;
+    HistoryState history;
+    ConfigState config;
+    PromptState prompt;
+    SearchState search;
 } AppState;
 
 void app_state_init(AppState *s);

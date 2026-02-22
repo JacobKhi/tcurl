@@ -1,6 +1,6 @@
 #include "test.h"
 
-#include "core/env.h"
+#include "core/config/env.h"
 
 int test_env(void) {
     const char *path = "tests/fixtures/env_test.json";

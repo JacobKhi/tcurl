@@ -1,8 +1,8 @@
 #include "test.h"
 
-#include "core/history.h"
-#include "core/history_storage.h"
-#include "core/textbuf.h"
+#include "core/storage/history.h"
+#include "core/storage/history_persistence.h"
+#include "core/text/textbuf.h"
 #include "state.h"
 
 int test_history_storage(void) {

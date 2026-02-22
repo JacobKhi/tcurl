@@ -1,5 +1,5 @@
 #include "test.h"
-#include "core/textbuf.h"
+#include "core/text/textbuf.h"
 
 #include <string.h>
 #include <stdlib.h>
