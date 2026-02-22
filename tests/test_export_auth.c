@@ -1,8 +1,8 @@
 #include "test.h"
 
-#include "core/auth.h"
-#include "core/export.h"
-#include "core/textbuf.h"
+#include "core/interaction/auth.h"
+#include "core/format/export.h"
+#include "core/text/textbuf.h"
 
 int test_export_auth(void) {
     RequestSnapshot req;

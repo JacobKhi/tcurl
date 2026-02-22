@@ -1,6 +1,6 @@
 #include "test.h"
 
-#include "core/format.h"
+#include "core/format/format.h"
 
 int test_format(void) {
     char *pretty = json_pretty_print("{\"a\":1}");

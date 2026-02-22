@@ -1,6 +1,6 @@
 #include "test.h"
 
-#include "core/i18n.h"
+#include "core/text/i18n.h"
 
 int test_i18n(void) {
     TEST_ASSERT(i18n_resolve_language(UI_LANG_SETTING_PT, "en_US.UTF-8") == UI_LANG_PT);

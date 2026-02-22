@@ -3,9 +3,9 @@
 #include <curl/curl.h>
 
 #include "state.h"
-#include "core/keymap.h"
-#include "ui/draw.h"
-#include "ui/input.h"
+#include "core/config/keymap.h"
+#include "ui/panels/draw.h"
+#include "ui/input/input.h"
 
 void dispatch_action(AppState *s, Action a);
 
@@ -18,7 +18,7 @@ int main(void) {
     Keymap keymap;
     (void)keymap_load_file(
         &keymap,
-        state.paths.keymap_conf ? state.paths.keymap_conf : "config/keymap.conf"
+        state.config.paths.keymap_conf ? state.config.paths.keymap_conf : "config/keymap.conf"
     );
 
     initscr();

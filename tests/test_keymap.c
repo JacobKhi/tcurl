@@ -1,7 +1,7 @@
 #include "test.h"
 
-#include "core/actions.h"
-#include "core/keymap.h"
+#include "core/interaction/actions.h"
+#include "core/config/keymap.h"
 #include <ncurses.h>
 
 int test_keymap(void) {
