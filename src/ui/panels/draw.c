@@ -70,6 +70,12 @@ static const char *method_label(HttpMethod m) {
             return "PUT";
         case HTTP_DELETE:
             return "DELETE";
+        case HTTP_PATCH:
+            return "PATCH";
+        case HTTP_HEAD:
+            return "HEAD";
+        case HTTP_OPTIONS:
+            return "OPTIONS";
         default:
             return "?";
     }
