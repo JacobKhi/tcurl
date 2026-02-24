@@ -137,6 +137,20 @@ int http_request(
             curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
             break;
 
+        case HTTP_PATCH:
+            curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload);
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)strlen(payload));
+            break;
+
+        case HTTP_HEAD:
+            curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
+            break;
+
+        case HTTP_OPTIONS:
+            curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "OPTIONS");
+            break;
+
         case HTTP_METHOD_COUNT:
             curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
             break;
