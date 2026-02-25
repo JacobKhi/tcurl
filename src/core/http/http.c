@@ -158,9 +158,23 @@ int http_request(
 
     CURLcode res = curl_easy_perform(curl);
 
-    double total_time = 0.0;
-    curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &total_time);
-    out->elapsed_ms = total_time * 1000.0;
+    /* Capture detailed timing breakdown */
+    double dns, tcp_conn, tls_conn, pre, ttfb, total;
+    curl_easy_getinfo(curl, CURLINFO_NAMELOOKUP_TIME, &dns);
+    curl_easy_getinfo(curl, CURLINFO_CONNECT_TIME, &tcp_conn);
+    curl_easy_getinfo(curl, CURLINFO_APPCONNECT_TIME, &tls_conn);
+    curl_easy_getinfo(curl, CURLINFO_PRETRANSFER_TIME, &pre);
+    curl_easy_getinfo(curl, CURLINFO_STARTTRANSFER_TIME, &ttfb);
+    curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &total);
+
+    /* Calculate timing deltas */
+    out->timing.dns_ms = dns * 1000.0;
+    out->timing.tcp_ms = (tcp_conn - dns) * 1000.0;
+    out->timing.tls_ms = (tls_conn > 0) ? (tls_conn - tcp_conn) * 1000.0 : 0.0;
+    out->timing.ttfb_ms = (ttfb > pre) ? (ttfb - pre) * 1000.0 : 0.0;
+    out->timing.transfer_ms = (total > ttfb) ? (total - ttfb) * 1000.0 : 0.0;
+    out->timing.total_ms = total * 1000.0;
+    out->elapsed_ms = out->timing.total_ms;
 
     if (res != CURLE_OK) {
         out->status = 0;

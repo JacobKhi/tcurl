@@ -6,6 +6,7 @@
 #include "core/storage/paths.h"
 #include "core/text/i18n.h"
 #include "core/config/constants.h"
+#include "core/http/timing.h"
 
 typedef enum {
     MODE_NORMAL = 0,
@@ -45,6 +46,7 @@ typedef struct HttpResponse {
     char *body_view;
 
     double elapsed_ms;
+    HttpTiming timing;
     char *error;
     int is_json;
 } HttpResponse;

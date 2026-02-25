@@ -89,6 +89,7 @@ void history_push(
         it->is_json = response->is_json;
         it->response_body = dup_or_null(response->body);
         it->response_body_view = dup_or_null(response->body_view);
+        it->timing = response->timing;
     }
 
     h->count++;

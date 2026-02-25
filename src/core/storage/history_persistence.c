@@ -88,6 +88,19 @@ static double json_get_double(const cJSON *obj, const char *key, double def) {
     return v->valuedouble;
 }
 
+static void json_get_timing(const cJSON *obj, const char *key, HttpTiming *out) {
+    memset(out, 0, sizeof(*out));
+    const cJSON *timing = cJSON_GetObjectItemCaseSensitive((cJSON *)obj, key);
+    if (!timing || !cJSON_IsObject(timing)) return;
+    
+    out->dns_ms = json_get_double(timing, "dns_ms", 0.0);
+    out->tcp_ms = json_get_double(timing, "tcp_ms", 0.0);
+    out->tls_ms = json_get_double(timing, "tls_ms", 0.0);
+    out->ttfb_ms = json_get_double(timing, "ttfb_ms", 0.0);
+    out->transfer_ms = json_get_double(timing, "transfer_ms", 0.0);
+    out->total_ms = json_get_double(timing, "total_ms", 0.0);
+}
+
 char *history_storage_default_path(void) {
     const char *home = getenv("HOME");
     if (!home || !*home) return strdup("./history.jsonl");
@@ -156,6 +169,7 @@ int history_storage_load_with_stats(History *h, const char *path, HistoryLoadSta
         resp.body = response_body ? strdup(response_body) : NULL;
         resp.body_view = response_body_view ? strdup(response_body_view) : NULL;
         resp.error = NULL;
+        json_get_timing(root, "timing", &resp.timing);
 
         history_push(h, method, url, &body_tb, &headers_tb, &resp);
         if (stats) stats->loaded_ok++;
@@ -189,6 +203,18 @@ static int append_history_item(FILE *f, const HistoryItem *it) {
     cJSON_AddNumberToObject(root, "status", it->status);
     cJSON_AddNumberToObject(root, "elapsed_ms", it->elapsed_ms);
     cJSON_AddNumberToObject(root, "is_json", it->is_json);
+
+    /* Add timing breakdown */
+    cJSON *timing = cJSON_CreateObject();
+    if (timing) {
+        cJSON_AddNumberToObject(timing, "dns_ms", it->timing.dns_ms);
+        cJSON_AddNumberToObject(timing, "tcp_ms", it->timing.tcp_ms);
+        cJSON_AddNumberToObject(timing, "tls_ms", it->timing.tls_ms);
+        cJSON_AddNumberToObject(timing, "ttfb_ms", it->timing.ttfb_ms);
+        cJSON_AddNumberToObject(timing, "transfer_ms", it->timing.transfer_ms);
+        cJSON_AddNumberToObject(timing, "total_ms", it->timing.total_ms);
+        cJSON_AddItemToObject(root, "timing", timing);
+    }
 
     if (it->response_body) cJSON_AddStringToObject(root, "response_body", it->response_body);
     else cJSON_AddNullToObject(root, "response_body");

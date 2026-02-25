@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/text/textbuf.h"
+#include "core/http/timing.h"
 
 typedef struct HttpResponse HttpResponse;
 
@@ -14,6 +15,7 @@ typedef struct HistoryItem {
     char *response_body;
     char *response_body_view;
     double elapsed_ms;
+    HttpTiming timing;
     int is_json;
 } HistoryItem;
 
