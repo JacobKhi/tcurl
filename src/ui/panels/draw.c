@@ -395,7 +395,14 @@ static void draw_response_content(WINDOW *w, const AppState *state) {
         return;
     }
 
-    const char *p = skip_lines(state->response.response.body_view, state->response.scroll);
+    /* Determine what to show: headers or body */
+    const char *content = state->response.show_headers 
+        ? state->response.response.response_headers 
+        : state->response.response.body_view;
+    
+    if (!content) content = state->response.show_headers ? "(no headers)" : "(no body)";
+
+    const char *p = skip_lines(content, state->response.scroll);
 
     int row = body_start;
     int clip = wd - 4;

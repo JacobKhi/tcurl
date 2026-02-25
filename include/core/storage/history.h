@@ -14,6 +14,7 @@ typedef struct HistoryItem {
     long status;
     char *response_body;
     char *response_body_view;
+    char *response_headers;
     double elapsed_ms;
     HttpTiming timing;
     int is_json;

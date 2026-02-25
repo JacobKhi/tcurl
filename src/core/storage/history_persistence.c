@@ -153,6 +153,7 @@ int history_storage_load_with_stats(History *h, const char *path, HistoryLoadSta
         char *headers = json_dup_string_or_empty(root, "headers");
         char *response_body = json_dup_string_or_null(root, "response_body");
         char *response_body_view = json_dup_string_or_null(root, "response_body_view");
+        char *response_headers = json_dup_string_or_null(root, "response_headers");
 
         TextBuffer body_tb;
         TextBuffer headers_tb;
@@ -168,6 +169,7 @@ int history_storage_load_with_stats(History *h, const char *path, HistoryLoadSta
         resp.is_json = is_json;
         resp.body = response_body ? strdup(response_body) : NULL;
         resp.body_view = response_body_view ? strdup(response_body_view) : NULL;
+        resp.response_headers = response_headers ? strdup(response_headers) : NULL;
         resp.error = NULL;
         json_get_timing(root, "timing", &resp.timing);
 
@@ -182,8 +184,10 @@ int history_storage_load_with_stats(History *h, const char *path, HistoryLoadSta
         free(headers);
         free(response_body);
         free(response_body_view);
+        free(response_headers);
         free(resp.body);
         free(resp.body_view);
+        free(resp.response_headers);
 
         cJSON_Delete(root);
     }
@@ -221,6 +225,9 @@ static int append_history_item(FILE *f, const HistoryItem *it) {
 
     if (it->response_body_view) cJSON_AddStringToObject(root, "response_body_view", it->response_body_view);
     else cJSON_AddNullToObject(root, "response_body_view");
+
+    if (it->response_headers) cJSON_AddStringToObject(root, "response_headers", it->response_headers);
+    else cJSON_AddNullToObject(root, "response_headers");
 
     char *line = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);

@@ -21,6 +21,7 @@ typedef enum {
     ACT_HISTORY_REPLAY,
     ACT_SEARCH_NEXT,
     ACT_SEARCH_PREV,
+    ACT_TOGGLE_RESPONSE_VIEW,
 
     ACT_COUNT
 } Action;

@@ -53,13 +53,16 @@ static int load_history_item_into_state(AppState *s, const HistoryItem *it) {
 
     free(s->response.response.body);
     free(s->response.response.body_view);
+    free(s->response.response.response_headers);
     free(s->response.response.error);
 
     s->response.response.status = it->status;
     s->response.response.elapsed_ms = it->elapsed_ms;
+    s->response.response.timing = it->timing;
     s->response.response.is_json = it->is_json;
     s->response.response.body = it->response_body ? strdup(it->response_body) : NULL;
     s->response.response.body_view = it->response_body_view ? strdup(it->response_body_view) : NULL;
+    s->response.response.response_headers = it->response_headers ? strdup(it->response_headers) : NULL;
     s->response.response.error = NULL;
     s->response.scroll = 0;
     s->editor.body_scroll = 0;
@@ -167,6 +170,13 @@ void dispatch_action(AppState *s, Action a) {
         case ACT_SEARCH_PREV:
             if (s->ui.mode == MODE_NORMAL) {
                 search_step(s, -1);
+            }
+            break;
+
+        case ACT_TOGGLE_RESPONSE_VIEW:
+            if (s->ui.mode == MODE_NORMAL && s->ui.focused_panel == PANEL_RESPONSE) {
+                s->response.show_headers = !s->response.show_headers;
+                s->response.scroll = 0;
             }
             break;
 

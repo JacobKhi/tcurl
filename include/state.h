@@ -47,6 +47,7 @@ typedef struct HttpResponse {
 
     double elapsed_ms;
     HttpTiming timing;
+    char *response_headers;
     char *error;
     int is_json;
 } HttpResponse;
@@ -99,6 +100,7 @@ typedef struct {
     HttpResponse response;
     int is_request_in_flight;
     int scroll;
+    int show_headers;
 } ResponseState;
 
 /* History State - History entries, selection, persistence */

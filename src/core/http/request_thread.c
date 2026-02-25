@@ -15,9 +15,11 @@ static void fail_with_error(AppState *s, const char *msg) {
     app_state_lock(s);
     free(s->response.response.body);
     free(s->response.response.body_view);
+    free(s->response.response.response_headers);
     free(s->response.response.error);
     s->response.response.body = NULL;
     s->response.response.body_view = NULL;
+    s->response.response.response_headers = NULL;
     s->response.response.error = strdup(msg ? msg : "Unknown error");
     s->response.is_request_in_flight = 0;
     app_state_unlock(s);
@@ -125,12 +127,15 @@ void *request_thread(void *arg) {
     s->response.scroll = 0;
     free(s->response.response.body);
     free(s->response.response.body_view);
+    free(s->response.response.response_headers);
     free(s->response.response.error);
     s->response.response.body = response_local.body;
     s->response.response.body_view = response_local.body_view;
+    s->response.response.response_headers = response_local.response_headers;
     s->response.response.error = response_local.error;
     s->response.response.status = response_local.status;
     s->response.response.elapsed_ms = response_local.elapsed_ms;
+    s->response.response.timing = response_local.timing;
     s->response.response.is_json = response_local.is_json;
 
     if (s->history.history) {

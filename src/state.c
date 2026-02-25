@@ -168,6 +168,7 @@ void app_state_destroy(AppState *s) {
     /* Destroy Response State */
     free(s->response.response.body);
     free(s->response.response.body_view);
+    free(s->response.response.response_headers);
     free(s->response.response.error);
 
     /* Destroy History State */
