@@ -32,10 +32,12 @@ static void finish_command(AppState *s) {
 static void response_reset_content(AppState *s) {
     free(s->response.response.body);
     free(s->response.response.body_view);
+    free(s->response.response.response_headers);
     free(s->response.response.error);
 
     s->response.response.body = NULL;
     s->response.response.body_view = NULL;
+    s->response.response.response_headers = NULL;
     s->response.response.error = NULL;
     s->response.response.status = 0;
     s->response.response.elapsed_ms = 0.0;

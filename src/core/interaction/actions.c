@@ -25,6 +25,7 @@ static const ActionEntry ACTIONS[] = {
     {"history_replay", ACT_HISTORY_REPLAY},
     {"search_next", ACT_SEARCH_NEXT},
     {"search_prev", ACT_SEARCH_PREV},
+    {"toggle_response_view", ACT_TOGGLE_RESPONSE_VIEW},
 };
 
 Action action_from_string(const char *name) {
@@ -61,6 +62,7 @@ const char *action_description(Action a, UiLanguage lang) {
         case ACT_HISTORY_REPLAY: return i18n_get(lang, I18N_ACT_HISTORY_REPLAY_DESC);
         case ACT_SEARCH_NEXT: return i18n_get(lang, I18N_ACT_SEARCH_NEXT_DESC);
         case ACT_SEARCH_PREV: return i18n_get(lang, I18N_ACT_SEARCH_PREV_DESC);
+        case ACT_TOGGLE_RESPONSE_VIEW: return i18n_get(lang, I18N_ACT_TOGGLE_RESPONSE_VIEW_DESC);
         default: return "";
     }
 }

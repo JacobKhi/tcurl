@@ -351,17 +351,40 @@ static void draw_response_content(WINDOW *w, const AppState *state) {
 
     size_t bytes = strlen(state->response.response.body_view);
 
-    char meta[256];
-    snprintf(
-        meta,
-        sizeof(meta),
-        i18n_get(state->ui.language, I18N_RESPONSE_META_FMT),
-        state->response.response.status,
-        state->response.response.elapsed_ms,
-        bytes / 1024.0,
-        state->response.response.is_json ? i18n_get(state->ui.language, I18N_RESPONSE_META_JSON) : "",
-        state->response.scroll
-    );
+    char meta[512];
+    const HttpTiming *t = &state->response.response.timing;
+    
+    /* Format timing breakdown - show TLS only for HTTPS */
+    if (t->tls_ms > 0.1) {
+        snprintf(
+            meta,
+            sizeof(meta),
+            "Status: %ld | DNS:%.0fms TCP:%.0fms TLS:%.0fms TTFB:%.0fms Total:%.0fms | %.1f KB%s | scroll:%d",
+            state->response.response.status,
+            t->dns_ms,
+            t->tcp_ms,
+            t->tls_ms,
+            t->ttfb_ms,
+            t->total_ms,
+            bytes / 1024.0,
+            state->response.response.is_json ? i18n_get(state->ui.language, I18N_RESPONSE_META_JSON) : "",
+            state->response.scroll
+        );
+    } else {
+        snprintf(
+            meta,
+            sizeof(meta),
+            "Status: %ld | DNS:%.0fms TCP:%.0fms TTFB:%.0fms Total:%.0fms | %.1f KB%s | scroll:%d",
+            state->response.response.status,
+            t->dns_ms,
+            t->tcp_ms,
+            t->ttfb_ms,
+            t->total_ms,
+            bytes / 1024.0,
+            state->response.response.is_json ? i18n_get(state->ui.language, I18N_RESPONSE_META_JSON) : "",
+            state->response.scroll
+        );
+    }
 
     mvwaddnstr(w, 1, 2, meta, wd - 4);
     mvwhline(w, 2, 1, ACS_HLINE, wd - 2);
@@ -372,7 +395,14 @@ static void draw_response_content(WINDOW *w, const AppState *state) {
         return;
     }
 
-    const char *p = skip_lines(state->response.response.body_view, state->response.scroll);
+    /* Determine what to show: headers or body */
+    const char *content = state->response.show_headers 
+        ? state->response.response.response_headers 
+        : state->response.response.body_view;
+    
+    if (!content) content = state->response.show_headers ? "(no headers)" : "(no body)";
+
+    const char *p = skip_lines(content, state->response.scroll);
 
     int row = body_start;
     int clip = wd - 4;

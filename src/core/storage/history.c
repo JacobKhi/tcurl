@@ -28,6 +28,7 @@ static void free_history_item(HistoryItem *it) {
     free(it->headers);
     free(it->response_body);
     free(it->response_body_view);
+    free(it->response_headers);
 }
 
 void history_init(History *h) {
@@ -89,6 +90,8 @@ void history_push(
         it->is_json = response->is_json;
         it->response_body = dup_or_null(response->body);
         it->response_body_view = dup_or_null(response->body_view);
+        it->response_headers = dup_or_null(response->response_headers);
+        it->timing = response->timing;
     }
 
     h->count++;

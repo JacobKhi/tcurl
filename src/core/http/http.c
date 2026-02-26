@@ -27,6 +27,20 @@ static size_t write_cb(void *ptr, size_t size, size_t nmemb, void *userdata) {
     return total;
 }
 
+static size_t header_cb(void *ptr, size_t size, size_t nmemb, void *userdata) {
+    size_t total = size * nmemb;
+    Buffer *buf = userdata;
+
+    char *newp = realloc(buf->data, buf->size + total + 1);
+    if (!newp) return 0;
+
+    buf->data = newp;
+    memcpy(buf->data + buf->size, ptr, total);
+    buf->size += total;
+    buf->data[buf->size] = '\0';
+    return total;
+}
+
 static int starts_with_ci(const char *s, const char *p) {
     while (*p && *s) {
         if (tolower((unsigned char)*s) != tolower((unsigned char)*p))
@@ -92,12 +106,15 @@ int http_request(
     if (!curl) return -1;
 
     Buffer buf = {0};
+    Buffer header_buf = {0};
     char errbuf[CURL_ERROR_SIZE];
     errbuf[0] = '\0';
 
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buf);
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_cb);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header_buf);
     curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
@@ -158,13 +175,28 @@ int http_request(
 
     CURLcode res = curl_easy_perform(curl);
 
-    double total_time = 0.0;
-    curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &total_time);
-    out->elapsed_ms = total_time * 1000.0;
+    /* Capture detailed timing breakdown */
+    double dns, tcp_conn, tls_conn, pre, ttfb, total;
+    curl_easy_getinfo(curl, CURLINFO_NAMELOOKUP_TIME, &dns);
+    curl_easy_getinfo(curl, CURLINFO_CONNECT_TIME, &tcp_conn);
+    curl_easy_getinfo(curl, CURLINFO_APPCONNECT_TIME, &tls_conn);
+    curl_easy_getinfo(curl, CURLINFO_PRETRANSFER_TIME, &pre);
+    curl_easy_getinfo(curl, CURLINFO_STARTTRANSFER_TIME, &ttfb);
+    curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &total);
+
+    /* Calculate timing deltas */
+    out->timing.dns_ms = dns * 1000.0;
+    out->timing.tcp_ms = (tcp_conn - dns) * 1000.0;
+    out->timing.tls_ms = (tls_conn > 0) ? (tls_conn - tcp_conn) * 1000.0 : 0.0;
+    out->timing.ttfb_ms = (ttfb > pre) ? (ttfb - pre) * 1000.0 : 0.0;
+    out->timing.transfer_ms = (total > ttfb) ? (total - ttfb) * 1000.0 : 0.0;
+    out->timing.total_ms = total * 1000.0;
+    out->elapsed_ms = out->timing.total_ms;
 
     if (res != CURLE_OK) {
         out->status = 0;
         out->body = NULL;
+        out->response_headers = header_buf.data;
         out->error = strdup(errbuf[0] ? errbuf : curl_easy_strerror(res));
 
         if (headers) curl_slist_free_all(headers);
@@ -175,6 +207,7 @@ int http_request(
 
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &out->status);
     out->body = buf.data;
+    out->response_headers = header_buf.data;
     out->error = NULL;
 
     if (headers) curl_slist_free_all(headers);

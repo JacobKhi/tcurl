@@ -137,6 +137,7 @@ static const char *const EN[I18N_COUNT] = {
     [I18N_ACT_HISTORY_REPLAY_DESC] = "Replay selected history request",
     [I18N_ACT_SEARCH_NEXT_DESC] = "Go to next search match",
     [I18N_ACT_SEARCH_PREV_DESC] = "Go to previous search match",
+    [I18N_ACT_TOGGLE_RESPONSE_VIEW_DESC] = "Toggle response headers/body view",
 };
 
 static const char *const PT[I18N_COUNT] = {
@@ -266,6 +267,7 @@ static const char *const PT[I18N_COUNT] = {
     [I18N_ACT_HISTORY_REPLAY_DESC] = "Reexecutar requisição selecionada do histórico",
     [I18N_ACT_SEARCH_NEXT_DESC] = "Ir para a próxima ocorrência da busca",
     [I18N_ACT_SEARCH_PREV_DESC] = "Ir para a ocorrência anterior da busca",
+    [I18N_ACT_TOGGLE_RESPONSE_VIEW_DESC] = "Alternar visualização de cabeçalhos/corpo da resposta",
 };
 
 const char *i18n_get(UiLanguage lang, I18nKey key) {
