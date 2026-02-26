@@ -6,5 +6,6 @@ int http_request(
     HttpMethod method,
     const char *body,
     const TextBuffer *headers,
+    const char *cookie_jar_path,
     HttpResponse *out
 );

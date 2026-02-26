@@ -76,4 +76,18 @@ void cmd_lang(AppState *s, const char *arg);
  */
 void cmd_layout(AppState *s, const char *arg);
 
+/**
+ * List cookies from the cookie jar.
+ * 
+ * @param s Application state
+ */
+void cmd_cookies_list(AppState *s);
+
+/**
+ * Clear all cookies from the cookie jar.
+ * 
+ * @param s Application state
+ */
+void cmd_cookies_clear(AppState *s);
+
 #endif  // COMMAND_HANDLERS_H

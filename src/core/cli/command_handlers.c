@@ -342,3 +342,55 @@ void cmd_layout(AppState *s, const char *arg) {
              layout_profile_name(profile));
     response_set_text(s, msg);
 }
+
+void cmd_cookies_list(AppState *s) {
+    if (!s->config.paths.cookie_jar) {
+        response_set_error(s, "Cookie jar path not configured");
+        return;
+    }
+
+    FILE *f = fopen(s->config.paths.cookie_jar, "r");
+    if (!f) {
+        response_set_text(s, "No cookies stored yet");
+        return;
+    }
+
+    /* Read and display cookie file contents */
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    if (size <= 0) {
+        fclose(f);
+        response_set_text(s, "Cookie jar is empty");
+        return;
+    }
+
+    fseek(f, 0, SEEK_SET);
+    char *content = malloc(size + 1);
+    if (!content) {
+        fclose(f);
+        response_set_error(s, i18n_get(s->ui.language, I18N_UNKNOWN_ERROR));
+        return;
+    }
+
+    size_t read_size = fread(content, 1, size, f);
+    content[read_size] = '\0';
+    fclose(f);
+
+    response_set_text(s, content);
+    free(content);
+}
+
+void cmd_cookies_clear(AppState *s) {
+    if (!s->config.paths.cookie_jar) {
+        response_set_error(s, "Cookie jar path not configured");
+        return;
+    }
+
+    /* Delete cookie file */
+    if (remove(s->config.paths.cookie_jar) != 0) {
+        response_set_text(s, "No cookies to clear");
+        return;
+    }
+
+    response_set_text(s, i18n_get(s->ui.language, I18N_COOKIES_CLEARED));
+}
