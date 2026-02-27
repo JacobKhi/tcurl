@@ -103,6 +103,7 @@ void *request_thread(void *arg) {
         snap.method,
         payload,
         &resolved_headers,
+        s->config.paths.cookie_jar,
         &response_local
     );
 

@@ -136,6 +136,17 @@ static int append_help_settings(char **buf, size_t *len, size_t *cap, UiLanguage
 }
 
 /**
+ * Append cookies section to help text buffer.
+ * Returns 0 on failure, 1 on success.
+ */
+static int append_help_cookies(char **buf, size_t *len, size_t *cap, UiLanguage lang) {
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_HEADER_COOKIES))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_CMD_COOKIES_LIST))) return 0;
+    if (!str_appendf(buf, len, cap, "%s", i18n_get(lang, I18N_HELP_CMD_COOKIES_CLEAR))) return 0;
+    return 1;
+}
+
+/**
  * Append navigation and key bindings sections to help text buffer.
  * Returns 0 on failure, 1 on success.
  */
@@ -180,6 +191,7 @@ char *help_build_text(const Keymap *km, UiLanguage lang) {
     if (!append_help_search(&buf, &len, &cap, lang)) goto fail;
     if (!append_help_history(&buf, &len, &cap, lang)) goto fail;
     if (!append_help_settings(&buf, &len, &cap, lang)) goto fail;
+    if (!append_help_cookies(&buf, &len, &cap, lang)) goto fail;
     if (!append_help_keys(&buf, &len, &cap, km, lang)) goto fail;
 
     return buf;

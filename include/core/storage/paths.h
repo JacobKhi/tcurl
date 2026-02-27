@@ -11,6 +11,7 @@ typedef struct {
     char *envs_json;
     char *headers_txt;
     char *history_conf;
+    char *cookie_jar;
 } AppPaths;
 
 void paths_init(AppPaths *p);

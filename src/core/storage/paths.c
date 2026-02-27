@@ -123,6 +123,7 @@ void paths_free(AppPaths *p) {
     free(p->envs_json);
     free(p->headers_txt);
     free(p->history_conf);
+    free(p->cookie_jar);
 
     memset(p, 0, sizeof(*p));
 }
@@ -222,6 +223,7 @@ int paths_build_file_paths(AppPaths *p) {
     p->envs_json = pick_read_path(user_envs, fallback_envs);
     p->headers_txt = pick_read_path(user_headers, fallback_headers);
     p->history_conf = pick_read_path(user_history, fallback_history);
+    p->cookie_jar = path_join(p->config_dir, "cookies.txt");
 
     free(user_keymap);
     free(user_themes);
@@ -236,7 +238,7 @@ int paths_build_file_paths(AppPaths *p) {
     free(fallback_history);
 
     if (!p->keymap_conf || !p->layout_conf || !p->layout_conf_load || !p->themes_conf ||
-        !p->envs_json || !p->headers_txt || !p->history_conf) {
+        !p->envs_json || !p->headers_txt || !p->history_conf || !p->cookie_jar) {
         return 1;
     }
 

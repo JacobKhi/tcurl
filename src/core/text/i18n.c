@@ -94,8 +94,7 @@ static const char *const EN[I18N_COUNT] = {
     [I18N_HELP_HEADER_AUTH] = "\nAUTHENTICATION:\n",
     [I18N_HELP_HEADER_SEARCH] = "\nSEARCH:\n",
     [I18N_HELP_HEADER_HISTORY] = "\nHISTORY:\n",
-    [I18N_HELP_HEADER_SETTINGS] = "\nSETTINGS:\n",
-    [I18N_HELP_CMD_QUIT] = "  :q | :quit              Quit application\n",
+    [I18N_HELP_HEADER_SETTINGS] = "\nSETTINGS:\n",    [I18N_HELP_HEADER_COOKIES] = "\nCOOKIES:\n",    [I18N_HELP_CMD_QUIT] = "  :q | :quit              Quit application\n",
     [I18N_HELP_CMD_HELP] = "  :h | :help              Show this help\n",
     [I18N_HELP_CMD_LANG_LIST] = "  :lang list              List available languages\n",
     [I18N_HELP_CMD_LANG_SET] = "  :lang <auto|en|pt>      Set UI language for current session\n",
@@ -110,6 +109,8 @@ static const char *const EN[I18N_COUNT] = {
     [I18N_HELP_CMD_FIND] = "  :find <term>            Run contextual search immediately\n",
     [I18N_HELP_CMD_SET] = "  :set [key] [value]      Update runtime settings\n                          Keys: search_target, max_entries\n",
     [I18N_HELP_CMD_CLEAR] = "  :clear! | :ch!          Clear history (memory + storage)\n",
+    [I18N_HELP_CMD_COOKIES_LIST] = "  :cookies list           List stored cookies\n",
+    [I18N_HELP_CMD_COOKIES_CLEAR] = "  :cookies clear          Clear all cookies\n",
     [I18N_HELP_NAV_HEADER] = "\nNAVIGATION:\n",
     [I18N_HELP_NAV_LINE] = "  Arrow keys mirror h/l/k/j in normal mode\n",
     [I18N_HELP_KEYS_HEADER] = "\nKEY BINDINGS:\n",
@@ -138,6 +139,8 @@ static const char *const EN[I18N_COUNT] = {
     [I18N_ACT_SEARCH_NEXT_DESC] = "Go to next search match",
     [I18N_ACT_SEARCH_PREV_DESC] = "Go to previous search match",
     [I18N_ACT_TOGGLE_RESPONSE_VIEW_DESC] = "Toggle response headers/body view",
+    
+    [I18N_COOKIES_CLEARED] = "Cookies cleared successfully",
 };
 
 static const char *const PT[I18N_COUNT] = {
@@ -225,6 +228,7 @@ static const char *const PT[I18N_COUNT] = {
     [I18N_HELP_HEADER_SEARCH] = "\nBUSCA:\n",
     [I18N_HELP_HEADER_HISTORY] = "\nHISTORICO:\n",
     [I18N_HELP_HEADER_SETTINGS] = "\nCONFIGURACOES:\n",
+    [I18N_HELP_HEADER_COOKIES] = "\nCOOKIES:\n",
     [I18N_HELP_CMD_QUIT] = "  :q | :quit              Sair da aplicacao\n",
     [I18N_HELP_CMD_HELP] = "  :h | :help              Mostrar esta ajuda\n",
     [I18N_HELP_CMD_LANG_LIST] = "  :lang list              Listar linguagens disponiveis\n",
@@ -240,6 +244,8 @@ static const char *const PT[I18N_COUNT] = {
     [I18N_HELP_CMD_FIND] = "  :find <term>            Executar busca contextual imediatamente\n",
     [I18N_HELP_CMD_SET] = "  :set [chave] [valor]    Atualizar configuracoes de runtime\n                          Chaves: search_target, max_entries\n",
     [I18N_HELP_CMD_CLEAR] = "  :clear! | :ch!          Limpar historico (memoria + armazenamento)\n",
+    [I18N_HELP_CMD_COOKIES_LIST] = "  :cookies list           Listar cookies armazenados\n",
+    [I18N_HELP_CMD_COOKIES_CLEAR] = "  :cookies clear          Limpar todos os cookies\n",
     [I18N_HELP_NAV_HEADER] = "\nNAVEGACAO:\n",
     [I18N_HELP_NAV_LINE] = "  Setas espelham h/l/k/j no modo normal\n",
     [I18N_HELP_KEYS_HEADER] = "\nATALHOS DE TECLADO:\n",
@@ -268,6 +274,8 @@ static const char *const PT[I18N_COUNT] = {
     [I18N_ACT_SEARCH_NEXT_DESC] = "Ir para a próxima ocorrência da busca",
     [I18N_ACT_SEARCH_PREV_DESC] = "Ir para a ocorrência anterior da busca",
     [I18N_ACT_TOGGLE_RESPONSE_VIEW_DESC] = "Alternar visualização de cabeçalhos/corpo da resposta",
+    
+    [I18N_COOKIES_CLEARED] = "Cookies removidos com sucesso",
 };
 
 const char *i18n_get(UiLanguage lang, I18nKey key) {

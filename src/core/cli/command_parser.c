@@ -215,6 +215,23 @@ static void handle_clear_history(AppState *s, const Keymap *km, const char *args
     cmd_clear_history(s);
 }
 
+static void handle_cookies(AppState *s, const Keymap *km, const char *args) {
+    (void)km;
+    
+    if (!args || !*args) {
+        response_set_error(s, "Usage: :cookies list|clear");
+        return;
+    }
+
+    if (strcmp(args, "list") == 0) {
+        cmd_cookies_list(s);
+    } else if (strcmp(args, "clear") == 0) {
+        cmd_cookies_clear(s);
+    } else {
+        response_set_error(s, "Usage: :cookies list|clear");
+    }
+}
+
 /* Command registry */
 static const CommandEntry command_registry[] = {
     {"quit", "q", handle_quit},
@@ -227,6 +244,7 @@ static const CommandEntry command_registry[] = {
     {"lang", NULL, handle_lang},
     {"layout", NULL, handle_layout},
     {"clear!", "ch!", handle_clear_history},
+    {"cookies", NULL, handle_cookies},
     {NULL, NULL, NULL}  /* Sentinel */
 };
 

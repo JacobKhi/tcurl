@@ -100,6 +100,7 @@ int http_request(
     HttpMethod method,
     const char *body,
     const TextBuffer *headers_tb,
+    const char *cookie_jar_path,
     HttpResponse *out
 ) {
     CURL *curl = curl_easy_init();
@@ -118,6 +119,12 @@ int http_request(
     curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+
+    /* Enable persistent cookie jar */
+    if (cookie_jar_path && cookie_jar_path[0]) {
+        curl_easy_setopt(curl, CURLOPT_COOKIEFILE, cookie_jar_path);
+        curl_easy_setopt(curl, CURLOPT_COOKIEJAR, cookie_jar_path);
+    }
 
     int has_ct = 0;
     struct curl_slist *headers =
