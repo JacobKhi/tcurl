@@ -4,10 +4,12 @@
 
 ### HTTP Client
 - Full HTTP/HTTPS support via libcurl
-- Methods: GET, POST, PUT, DELETE
+- Methods: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
 - Custom headers support
 - Request body editing
 - Response viewing with metadata
+- Response headers viewing (toggle with keybind)
+- Cookie management (persistent cookie jar)
 
 ### Terminal UI
 - Ncurses-based TUI
@@ -109,10 +111,17 @@
 ### Request Metadata
 
 - HTTP status codes
-- Response time (milliseconds)
 - Payload size (KB)
 - JSON detection and pretty-print
 - Scroll position tracking
+- Request timing breakdown:
+  - DNS resolution time
+  - TCP connection time
+  - TLS handshake time (HTTPS only)
+  - Time to first byte (TTFB)
+  - Data transfer time
+  - Total request time
+- Format: "DNS: 10ms | TCP: 15ms | TLS: 45ms | TTFB: 120ms | Total: 250ms"
 
 ### Async Requests
 
@@ -133,6 +142,23 @@
   - `envs.json` - Environments
   - `headers.txt` - Autocomplete
   - `history.conf` - History settings
+  - `cookies.txt` - Cookie jar
+
+### Response Headers Viewer
+
+- Toggle between response body and response headers
+- Keybind-driven toggle (configurable via keymap)
+- Shows full HTTP response headers
+- Scroll position resets on toggle
+- Works in all layout profiles
+
+### Cookie Management
+
+- Persistent cookie jar (Netscape format)
+- Automatic cookie handling per request
+- List active cookies with `:cookies list`
+- Clear cookies with `:cookies clear`
+- Cookie jar stored at `~/.config/tcurl/cookies.txt`
 
 ### Autocomplete
 
@@ -153,7 +179,7 @@
 
 ### Testing
 - Comprehensive test suite
-- 8 test modules
+- 16 test modules
 - AddressSanitizer support
 - Automated testing
 
@@ -192,16 +218,15 @@
 
 ## Planned Features
 
-- More HTTP methods (PATCH, HEAD, OPTIONS)
 - Request collections/workspaces
 - Proxy support
 - SSL certificate options
-- Request timing breakdown
-- Response headers viewing
-- Cookie management
+- Response filtering (jq-like)
+- Request snippets/templates
+- File upload support (multipart/form-data)
 - Multi-tab interface
 - Request chaining
 - GraphQL support
-- WebSocket support (future)
+- WebSocket support
 
 See [USAGE.md](USAGE.md) for usage instructions and [CONFIGURATION.md](CONFIGURATION.md) for configuration details.

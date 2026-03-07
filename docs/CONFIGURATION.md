@@ -70,51 +70,56 @@ Customize keyboard bindings for each mode.
 
 ```conf
 [normal]
-q = ACT_QUIT
-h = ACT_FOCUS_LEFT
-l = ACT_FOCUS_RIGHT
-k = ACT_MOVE_UP
-j = ACT_MOVE_DOWN
-i = ACT_ENTER_INSERT
-: = ACT_ENTER_COMMAND
-/ = ACT_ENTER_SEARCH
-Enter = ACT_SEND_REQUEST
-Tab = ACT_TOGGLE_EDITOR_FIELD
-m = ACT_CYCLE_METHOD
-e = ACT_CYCLE_ENV
-o = ACT_HISTORY_LOAD
-r = ACT_HISTORY_REPLAY
-n = ACT_SEARCH_NEXT
-N = ACT_SEARCH_PREV
+h = focus_left
+l = focus_right
+j = move_down
+k = move_up
+left = focus_left
+right = focus_right
+down = move_down
+up = move_up
+i = enter_insert
+":" = enter_command
+"/" = enter_search
+tab = toggle_editor_field
+r = send_request
+m = cycle_method
+E = cycle_environment
+n = search_next
+N = search_prev
+enter = history_load
+s-enter = history_replay
+R = history_replay
 
 [insert]
-Escape = ACT_ENTER_NORMAL
+esc = enter_normal
 
 [command]
-Escape = ACT_ENTER_NORMAL
+esc = enter_normal
 
 [search]
-Escape = ACT_ENTER_NORMAL
+esc = enter_normal
 ```
 
 Available actions:
-- `ACT_QUIT` - Exit application
-- `ACT_MOVE_UP` - Move up in panel
-- `ACT_MOVE_DOWN` - Move down in panel
-- `ACT_FOCUS_LEFT` - Focus left panel
-- `ACT_FOCUS_RIGHT` - Focus right panel
-- `ACT_ENTER_INSERT` - Enter insert mode
-- `ACT_ENTER_NORMAL` - Return to normal mode
-- `ACT_ENTER_COMMAND` - Open command prompt
-- `ACT_ENTER_SEARCH` - Open search prompt
-- `ACT_SEND_REQUEST` - Send HTTP request
-- `ACT_TOGGLE_EDITOR_FIELD` - Cycle editor fields
-- `ACT_CYCLE_METHOD` - Cycle HTTP methods
-- `ACT_CYCLE_ENV` - Cycle environments
-- `ACT_HISTORY_LOAD` - Load history item
-- `ACT_HISTORY_REPLAY` - Replay history request
-- `ACT_SEARCH_NEXT` - Next search result
-- `ACT_SEARCH_PREV` - Previous search result
+- `quit` - Exit application
+- `move_up` - Move up in panel
+- `move_down` - Move down in panel
+- `focus_left` - Focus left panel
+- `focus_right` - Focus right panel
+- `enter_insert` - Enter insert mode
+- `enter_normal` - Return to normal mode
+- `enter_command` - Open command prompt
+- `enter_search` - Open search prompt
+- `send_request` - Send HTTP request
+- `toggle_editor_field` - Cycle editor fields (URL, BODY, HEADERS)
+- `cycle_method` - Cycle HTTP methods
+- `cycle_environment` - Cycle environments
+- `history_load` - Load history item into editor
+- `history_replay` - Replay history request immediately
+- `search_next` - Next search result
+- `search_prev` - Previous search result
+- `toggle_response_view` - Toggle between response body and headers
 
 ### envs.json
 
@@ -144,15 +149,15 @@ Use variables in requests with `{{VAR_NAME}}` syntax:
 
 ### headers.txt
 
-Common headers for autocomplete.
+Header names for autocomplete in the HEADERS editor field.
 
 ```
-Content-Type: application/json
-Authorization: Bearer 
-Accept: application/json
-User-Agent: tcurl/1.0
-X-API-Key: 
-X-Request-ID: 
+Authorization
+Content-Type
+Accept
+User-Agent
+X-API-Key
+X-Request-ID
 ```
 
 ### history.conf
@@ -161,10 +166,7 @@ History persistence settings.
 
 ```conf
 # Maximum entries to keep in memory
-max_entries = 100
-
-# History file location (relative to config dir)
-history_file = history.jsonl
+max_entries = 500
 ```
 
 ## Layout Profiles
@@ -197,6 +199,12 @@ Change settings at runtime using commands:
 :lang auto               # Auto-detect from LANG env
 :lang en                 # Set to English
 :lang pt                 # Set to Portuguese
+```
+
+### Cookies
+```
+:cookies list            # List stored cookies
+:cookies clear           # Clear all cookies
 ```
 
 ### Layout
