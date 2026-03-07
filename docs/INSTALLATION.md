@@ -147,6 +147,7 @@ Default configuration files:
 - `envs.json` - Environment variables
 - `headers.txt` - Header autocomplete list
 - `history.conf` - History settings
+- `cookies.txt` - Persistent cookie jar (created automatically)
 
 > **Note:** Running `make install-user` automatically copies default configuration files to `~/.config/tcurl/` if they don't already exist. If you skip user installation, config files will be created on first run.
 

@@ -363,6 +363,38 @@ Clear all request history from both memory and persistent storage. The exclamati
 
 ---
 
+## COOKIES
+
+### :cookies list
+Display the contents of the persistent cookie jar.
+
+**Usage:**
+```
+:cookies list
+```
+
+**Notes:**
+- Shows cookies stored in the cookie jar file
+- Displays "No cookies stored yet" if the file does not exist
+- Displays "Cookie jar is empty" if the file is empty
+
+---
+
+### :cookies clear
+Delete all stored cookies by removing the cookie jar file.
+
+**Usage:**
+```
+:cookies clear
+```
+
+**Notes:**
+- Removes the cookie jar file entirely
+- Displays "No cookies to clear" if no cookies exist
+- Cannot be undone
+
+---
+
 ## SETTINGS
 
 ### :set
@@ -462,7 +494,7 @@ See the output of `:help` command for a complete list of all key bindings config
 
 ### Environment Variables
 - URL and header fields support environment variable interpolation
-- Format: `${VAR_NAME}` or `$VAR_NAME`
+- Format: `{{VAR_NAME}}`
 - Variables are resolved from the active environment
 
 ### Multiple Environments

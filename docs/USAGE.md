@@ -6,7 +6,7 @@
 2. Enter insert mode: `i`
 3. Type URL and edit body/headers
 4. Return to normal mode: `Escape`
-5. Send request: `Enter`
+5. Send request: `r`
 6. View response in right panel
 
 ## Modes
@@ -40,10 +40,13 @@ Cycle through methods with `m` in normal mode:
 - POST
 - PUT
 - DELETE
+- PATCH
+- HEAD
+- OPTIONS
 
 ## Environments
 
-Define variables in `envs.json`, cycle with `e` in normal mode.
+Cycle environments with configured key (default `E`) in normal mode.
 
 Use variables in requests:
 - `{{VAR_NAME}}` in URL, headers, or body
@@ -61,8 +64,8 @@ Body: {"environment": "{{ENV_NAME}}"}
 ### Loading from History
 1. Focus history panel (`h` from normal mode)
 2. Navigate with `j`/`k`
-3. Load request with `o`
-4. Replay immediately with `r`
+3. Load request with `Enter`
+4. Replay immediately with `Shift+Enter` or `R`
 
 ### Clearing History
 ```
@@ -83,6 +86,24 @@ n                # Next match
 N                # Previous match
 :find term       # Search immediately
 ```
+
+## Response Headers
+
+Toggle between response body and response headers:
+- Bind a key to `toggle_response_view` in `keymap.conf`
+- When focused on the response panel, press the bound key to switch views
+- Scroll position resets on toggle
+
+## Cookies
+
+tcurl supports persistent cookie management. Cookies are automatically sent and received with requests.
+
+```
+:cookies list      # View stored cookies
+:cookies clear     # Delete all cookies
+```
+
+Cookies are stored in `~/.config/tcurl/cookies.txt` using the Netscape cookie format.
 
 ## Export
 
@@ -130,15 +151,15 @@ Change UI language:
 ## Tips and Tricks
 
 ### Quick Request Editing
-1. Load from history (`o`)
+1. Load from history (`Enter`)
 2. Enter insert mode (`i`)
 3. Modify URL/body/headers
-4. Send (`Escape` then `Enter`)
+4. Send (`Escape` then `r`)
 
 ### Template Workflow
 1. Create request with variables
 2. Save to history (automatic on send)
-3. Switch environments with `e`
+3. Switch environments with `E`
 4. Replay with same request, different vars
 
 ### Search Workflow

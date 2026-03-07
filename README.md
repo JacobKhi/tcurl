@@ -12,7 +12,7 @@ make
 Inside tcurl:
 - `i` to enter insert mode and edit URL/body/headers
 - `Escape` to return to normal mode
-- `Enter` to send request
+- `r` to send request
 - `:h` for help
 - `:q` to quit
 
@@ -37,7 +37,7 @@ See [docs/INSTALLATION.md](docs/INSTALLATION.md) for detailed installation instr
 
 - Vim-like modal interface (normal, insert, command, search)
 - Multiple layout profiles (classic, quad, focus_editor)
-- HTTP methods: GET, POST, PUT, DELETE
+- HTTP methods: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
 - Environment variables and templating
 - Request history with persistence
 - Export to curl or JSON
@@ -67,7 +67,7 @@ See [docs/FEATURES.md](docs/FEATURES.md) for complete feature list.
 - `j`/`k` or arrows: Scroll/navigate
 - `i`: Enter insert mode
 - `m`: Cycle HTTP method
-- `e`: Cycle environment
+- `E`: Cycle environment
 - `r`: Send request
 - `:`: Command mode
 - `/`: Search mode
@@ -81,6 +81,7 @@ See [docs/FEATURES.md](docs/FEATURES.md) for complete feature list.
 :theme list     List themes
 :export curl    Export as curl
 :auth bearer    Set bearer token
+:cookies list   List cookies
 :clear!         Clear history
 ```
 
@@ -97,6 +98,7 @@ Files:
 - `envs.json` - Environment variables
 - `headers.txt` - Header autocomplete
 - `history.conf` - History settings
+- `cookies.txt` - Persistent cookie jar
 
 See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for details.
 
@@ -106,14 +108,14 @@ See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for details.
 1. Start tcurl: `./tcurl`
 2. Press `i` to edit URL
 3. Type: `https://httpbin.org/get`
-4. Press `Escape` then `Enter`
+4. Press `Escape` then `r`
 
 ### POST with Body
 1. Press `i` and enter URL
 2. Press `Tab` to switch to BODY
 3. Type JSON: `{"name": "test"}`
 4. Press `m` to change method to POST
-5. Press `Escape` then `Enter`
+5. Press `Escape` then `r`
 
 ### Using Environments
 1. Edit `~/.config/tcurl/envs.json`:
